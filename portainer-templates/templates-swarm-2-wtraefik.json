@@ -96,7 +96,7 @@
 			"platform": "linux",
 			"repository": {
 				"stackfile": "docker-stack-wtraefik.yml",
-				"url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose"
+				"url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/hotspotmanager-compose"
 			},
 			"title": "HotspotManager (traefik)",
 			"type": 2
@@ -163,7 +163,7 @@
 			"platform": "linux",
 			"repository": {
 				"stackfile": "docker-stack-wtraefik.yml",
-				"url": "https://gitlab.adipsys.com/deploy/dnsprotect-compose"
+				"url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/dnsprotect-compose"
 			},
 			"title": "DNSprotect (traefik)",
 			"type": 2
@@ -215,7 +215,7 @@
 			"platform": "linux",
 			"repository": {
 				"stackfile": "docker-stack-wtraefik.yml",
-				"url": "https://gitlab.adipsys.com/deploy/studio-compose"
+				"url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/studio-compose"
 			},
 			"title": "STUDIO (traefik)",
 			"type": 2
@@ -346,7 +346,7 @@
 			"platform": "linux",
 			"repository": {
 				"stackfile": "docker-stack-ha.yml",
-				"url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose"
+				"url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/hotspotmanager-compose"
 			},
 			"title": "HotspotManager HA (traefik)",
 			"type": 2
@@ -358,7 +358,7 @@
 			"platform": "linux",
 			"repository": {
 				"stackfile": "traefik-3.yml",
-				"url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose"
+				"url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/hotspotmanager-compose"
 			},
 			"title": "Traefik",
 			"type": 2
