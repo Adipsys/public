@@ -12,7 +12,7 @@
       "platform": "linux",
       "logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Logo-Hotspot-Manager-200x200-optimise.png",
       "repository": {
-        "url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose",
+        "url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/hotspotmanager-compose",
         "stackfile": "docker-stack.yml" },
       "env": [
 				{
@@ -111,7 +111,7 @@
 		"platform": "linux",
 		"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Pictos-dns-protect-200x200-optimise.png",
 		"repository": {
-		  "url": "https://gitlab.adipsys.com/deploy/dnsprotect-compose",
+		  "url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/dnsprotect-compose",
 		  "stackfile": "docker-stack.yml" },
 		"env": [
 			{
@@ -181,7 +181,7 @@
 		"platform": "linux",
 		"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Picto-Studio-200x200-optimise.png",
 		"repository": {
-		  "url": "https://gitlab.adipsys.com/deploy/studio-compose",
+		  "url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/studio-compose",
 		  "stackfile": "docker-stack.yml" },
 		"env": [
 			{
