@@ -1,0 +1,18 @@
+volumes:
+ traffic-logs_vol01:
+
+services:
+ hm-rsyslog:
+      image: ${PRODUCT_SOURCE}/hm-rsyslog:${PRODUCT_VERSION}
+      environment:
+             - TZ=${TZ}
+             - RSYSLOG_ROTATE=${RSYSLOG_ROTATE}
+      #ports:
+      #        - 5014:514/udp
+      ports:
+              - target: 514
+                published: ${RSYSLOG_PORT}
+                protocol: udp
+                mode: host
+      volumes:
+          - 'traffic-logs_vol01:/data/logs/'

@@ -1,0 +1,79 @@
+version: '3.8'
+
+volumes:
+ studio-db_vol01:
+ studio-media_vol01:
+ #ssl-certificates_vol01:
+
+networks:
+  traefik_default:
+    name: traefik_default
+    external: true
+  local_stack:
+
+services:
+ studio-db:
+    image: ${PRODUCT_SOURCE}/studio-ha-db:${PRODUCT_VERSION}
+    command: seed    
+#   command: node studio-dbX
+    environment:
+      - XTRABACKUP_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=%
+      - NODE_ADDRESS=^10.200.*.*
+      #- FAKE_HEALTHCHECK=8081
+    deploy:
+      placement:
+             #max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+    networks:
+          - local_stack
+    volumes:
+          - 'studio-db_vol01:/var/lib/mysql/'
+
+ studio-web:
+      image: ${PRODUCT_SOURCE}/studio-ha-web:${PRODUCT_VERSION}
+      hostname: studio
+      environment:
+             - TZ=${TZ}
+             - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+             - OPERATOR=${OPERATOR}
+             - STUDIO_NAME=${STUDIO_NAME}
+             - OPERATOR_SUPPORT_EMAIL=${OPERATOR_SUPPORT_EMAIL}
+             - ADMIN_PASSWD=${ADMIN_PASSWD}
+      deploy:
+         placement:
+          #   max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+         labels:
+             - "traefik.enable=true"
+             - "traefik.http.routers.STUDIO-admin-http.rule=Host(`${STUDIO_NAME}`)"
+             - "traefik.http.routers.STUDIO-admin-http.entrypoints=web"
+
+             #- "traefik.http.routers.STUDIO-admin-http.middlewares=https_redirect"
+             #- "traefik.http.middlewares.https_redirect.redirectscheme.scheme=https"
+             #- "traefik.http.middlewares.https_redirect.redirectscheme.permanent=true"
+             
+             - "traefik.http.routers.STUDIO-admin-https.rule=Host(`${STUDIO_NAME}`)"
+             - "traefik.http.routers.STUDIO-admin-https.entrypoints=websecure"
+             - "traefik.http.routers.STUDIO-admin-https.tls=true"
+        #    - "traefik.http.routers.STUDIO-admin-https.tls.certresolver=letsencrypt"
+             
+             - "traefik.http.services.STUDIO.loadbalancer.server.port=80"
+             - "traefik.http.services.STUDIO.loadbalancer.server.scheme=http"
+             - "traefik.http.services.STUDIO.loadbalancer.sticky=true"
+             - "traefik.http.services.STUDIO.loadbalancer.sticky.cookie.name=traefik"
+
+             #- "traefik.docker.network=traefik_default"
+             - "traefik.swarm.network=traefik_default"
+      networks:
+             - local_stack
+             - traefik_default
+      volumes:
+          - 'studio-media_vol01:/var/www/studio/web/media/'
+          #- 'ssl-certificates_vol01:/root/ssl_certificates/'
+          - '/root/ssl_certificates/:/root/ssl_certificates/'
+      depends_on:
+        - "studio-db"

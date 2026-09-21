@@ -1,0 +1,199 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hm-db-vol01
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 10Gi}}
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hm-data-vol01
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 10Gi}}
+  storageClassName: ""
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hm-logs-vol01
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 5Gi}}
+  storageClassName: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hm-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: hm-db}
+  template:
+    metadata:
+      labels: {app: hm-db}
+    spec:
+      containers:
+      - name: hm-db
+        image: registry.adipsys.com/hotspotmanager/hm-ha-db:3.37.0
+        command: ["seed"]
+        env:
+        - name: TZ
+          value: Europe/Paris
+        - name: XTRABACKUP_PASSWORD
+          value: KeeChee8
+        - name: MYSQL_ROOT_PASSWORD
+          value: KeeChee8
+        - name: MYSQL_ROOT_HOST
+          value: "%"
+        - name: NODE_ADDRESS
+          value: "^10.200.*.*"
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: hm-db-vol01
+      volumes:
+      - name: hm-db-vol01
+        persistentVolumeClaim:
+          claimName: hm-db-vol01
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hm-web
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: hm-web}
+  template:
+    metadata:
+      labels: {app: hm-web}
+    spec:
+      containers:
+      - name: hm-web
+        image: registry.adipsys.com/hotspotmanager/hm-ha-web:3.41.4
+        env:
+        - name: TZ
+          value: Europe/Paris
+        - name: MYSQL_ROOT_PASSWORD
+          value: KeeChee8
+        - name: OPERATOR
+          value: Adipsys
+        - name: HM_SERVER_NAME
+          value: demo
+        - name: HM_URL_SUFFIX
+          value: adipsys.net
+        - name: HOTSPOT_ALIAS1
+          value: ${HOTSPOT_ALIAS1}
+        - name: ADMIN_ALIAS1
+          value: ${ADMIN_ALIAS1}
+        - name: OPERATOR_SUPPORT_EMAIL
+          value: support@adipsys.com
+        - name: LICENCE_SERVER
+          value: licences.adipsys.com
+        - name: RSYSLOG_SERVER
+          value: ${RSYSLOG_SERVER}
+        - name: REMEDIATION
+          value: "yes"
+        - name: SYMFONY_VERSION
+          value: "1.5.15"
+        ports:
+        - containerPort: 80
+        - containerPort: 443
+        volumeMounts:
+        - mountPath: /user_data
+          name: hm-data-vol01
+        - mountPath: /data/logs
+          name: hm-logs-vol01
+        - mountPath: /root/hm_ssl_certificates
+          name: ssl-certs
+      volumes:
+      - name: hm-data-vol01
+        persistentVolumeClaim:
+          claimName: hm-data-vol01
+      - name: hm-logs-vol01
+        persistentVolumeClaim:
+          claimName: hm-logs-vol01
+      - name: ssl-certs
+        hostPath:
+          path: /root/ssl_certificates
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hm-memcached
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: hm-memcached}
+  template:
+    metadata:
+      labels: {app: hm-memcached}
+    spec:
+      containers:
+      - name: memcached
+        image: memcached:1.4.39
+        command: ["memcached", "-p", "11212"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hm-rsyslog
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: hm-rsyslog}
+  template:
+    metadata:
+      labels: {app: hm-rsyslog}
+    spec:
+      containers:
+      - name: hm-rsyslog
+        image: registry.adipsys.com/hotspotmanager/hm-rsyslog:3.41.4
+        env:
+        - name: TZ
+          value: Europe/Paris
+        - name: RSYSLOG_SERVER
+          value: ${RSYSLOG_SERVER}
+        - name: RSYSLOG_ROTATE
+          value: ${RSYSLOG_ROTATE}
+        ports:
+        - containerPort: 514
+          protocol: UDP
+        volumeMounts:
+        - mountPath: /data/logs
+          name: hm-logs-vol01
+      volumes:
+      - name: hm-logs-vol01
+        persistentVolumeClaim:
+          claimName: hm-logs-vol01
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hm-radius-v3
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: hm-radius}
+  template:
+    metadata:
+      labels: {app: hm-radius}
+    spec:
+      containers:
+      - name: hm-radius
+        image: registry.adipsys.com/hotspotmanager/hm-ha-radius-v3:3.41.4
+        command: ["${RADIUS_COMMAND}"]
+        env:
+        - name: TZ
+          value: Europe/Paris
+        - name: DEBUG
+          value: "0"
+        ports:
+        - containerPort: 1812
+          protocol: UDP
+        - containerPort: 1813
+          protocol: UDP

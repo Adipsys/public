@@ -1,0 +1,17 @@
+version: '3.8'
+ 
+services:
+    filebrowser:
+      image: filebrowser/filebrowser
+      ports:
+              - 8080:80
+      volumes:
+              - /data/logs:/srv
+              - /root/filebrowser/database.db:/database.db
+              - /root/filebrowser/.filebrowser.json:/filebrowser.json
+      environment:
+              - branding.name="Adipsys Logs"
+#      deploy:
+#        placement:
+#             constraints:
+#                 - node.hostname==UP-node1

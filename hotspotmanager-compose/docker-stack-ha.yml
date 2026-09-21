@@ -1,0 +1,296 @@
+version: '3.9'
+
+volumes:
+ hm-db_vol01:
+ hm-data_vol01:
+ hm-logs_vol01:
+ hm-data_replica:
+ hm-data_master:
+ hm-logs_master:
+
+ #ssl-certificates_vol01:
+
+networks:
+  traefik_default:
+   name: traefik_default
+   external: true
+  local_stack:
+
+services:
+# Rename to hm-db-seed when bootstraping a cluster.
+ hm-db-seed:
+    image: ${PRODUCT_SOURCE}/hm-ha-db:3.42.0
+    command : seed
+    # command: no-galera
+    environment:
+      - TZ=${TZ}
+      - XTRABACKUP_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=%
+      - NODE_ADDRESS=^10.200.*.*
+      #- FAKE_HEALTHCHECK=8081
+    deploy:
+      replicas: 1
+      placement:
+             max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+                 - node.hostname == CLOUD02-01
+    
+    networks:
+          - local_stack
+    volumes:
+          - 'hm-db_vol01:/var/lib/mysql/'
+
+ hm-db:
+    image: ${PRODUCT_SOURCE}/hm-ha-db:3.42.0
+    command : node tasks.hm-db-seed,tasks.hm-db
+    environment:
+      - TZ=${TZ}
+      - XTRABACKUP_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=%
+      - NODE_ADDRESS=^10.200.*.*
+      #- FAKE_HEALTHCHECK=8081
+    deploy:
+      restart_policy:
+           #condition: none
+           condition: on-failure
+           delay: 10s
+           max_attempts: 3
+           window: 300s
+      replicas: 1
+      placement:
+             max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+                 - node.hostname != CLOUD02-01
+    networks:
+             - local_stack
+
+    volumes:
+          - 'hm-db_vol01:/var/lib/mysql/'
+
+ hm-master:
+      image: ${PRODUCT_SOURCE}/hm-ha-master:${PRODUCT_VERSION}
+      hostname: wifi-master
+      environment:
+             - TZ=${TZ}
+             #- MYSQL_DB_SERVER=
+             - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+             - OPERATOR=${OPERATOR}
+             - HM_SERVER_NAME=${HM_SERVER_NAME}
+             - HM_URL_SUFFIX=${HM_URL_SUFFIX}
+             - HOTSPOT_ALIAS1=${HOTSPOT_ALIAS1}
+             - ADMIN_ALIAS1=${ADMIN_ALIAS1}
+             - OPERATOR_SUPPORT_EMAIL=${OPERATOR_SUPPORT_EMAIL}
+             - LICENCE_SERVER=${LICENCE_SERVER}
+             - RSYSLOG_SERVER=${RSYSLOG_SERVER}
+             - SYMFONY_VERSION=1.5.15
+      deploy:
+         replicas: 1
+         placement:
+             max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+      networks:
+            - local_stack
+      volumes:
+          - 'hm-logs_master:/data/logs/'
+          - 'hm-data_master:/user_data/'
+      depends_on:
+        - hm-db
+        - hm-memcached
+
+ hm-web:
+      image: ${PRODUCT_SOURCE}/hm-ha-web:${PRODUCT_VERSION}
+      hostname: wifi-node1
+      #ulimits:
+      #  nofile:
+      #    soft: 65536
+      #    hard: 65536
+      environment:
+             - TZ=${TZ}
+             #- MYSQL_DB_SERVER=
+             - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+             - OPERATOR=${OPERATOR}
+             - HM_SERVER_NAME=${HM_SERVER_NAME}
+             - HM_URL_SUFFIX=${HM_URL_SUFFIX}
+             - HOTSPOT_ALIAS1=${HOTSPOT_ALIAS1}
+             - ADMIN_ALIAS1=${ADMIN_ALIAS1}
+             - OPERATOR_SUPPORT_EMAIL=${OPERATOR_SUPPORT_EMAIL}
+             - LICENCE_SERVER=${LICENCE_SERVER}
+             - RSYSLOG_SERVER=${RSYSLOG_SERVER}
+             - REMEDIATION=yes
+             - HA=1
+             - SYMFONY_VERSION=1.5.15
+      deploy:
+         replicas: 1
+         placement:
+             max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+                 - node.hostname == CLOUD02-01
+         labels:
+             - "traefik.enable=true"
+             - "traefik.http.routers.${HM_SERVER_NAME}-admin-http.rule=Host(`${HM_SERVER_NAME}-admin.${HM_URL_SUFFIX}`)"
+             - "traefik.http.routers.${HM_SERVER_NAME}-admin-http.entrypoints=web"
+        #    - "traefik.http.routers.${HM_SERVER_NAME}-admin-http.middlewares=https_redirect"
+        #    - "traefik.http.middlewares.https_redirect.redirectscheme.scheme=https"
+        #    - "traefik.http.middlewares.https_redirect.redirectscheme.permanent=true"
+             
+             - "traefik.http.routers.${HM_SERVER_NAME}-admin-https.rule=Host(`${HM_SERVER_NAME}-admin.${HM_URL_SUFFIX}`)"
+             - "traefik.http.routers.${HM_SERVER_NAME}-admin-https.entrypoints=websecure"
+             - "traefik.http.routers.${HM_SERVER_NAME}-admin-https.tls=true"
+        #    - "traefik.http.middlewares.${HM_SERVER_NAME}-admin-https.IPAllowList.sourcerange=178.33.43.243"
+        #    - "traefik.http.routers.${HM_SERVER_NAME}-admin-https.tls.certresolver=letsencrypt"
+
+             - "traefik.http.routers.${HM_SERVER_NAME}-adminpc-http.rule=Host(`${HM_SERVER_NAME}.${HM_URL_SUFFIX}`) || Host(`${HM_SERVER_NAME}-api.${HM_URL_SUFFIX}`)"
+             - "traefik.http.routers.${HM_SERVER_NAME}-adminpc-http.entrypoints=web"
+             
+             - "traefik.http.routers.${HM_SERVER_NAME}-adminpc-https.rule=Host(`${HM_SERVER_NAME}.${HM_URL_SUFFIX}`) || Host(`${HM_SERVER_NAME}-api.${HM_URL_SUFFIX}`)"
+             - "traefik.http.routers.${HM_SERVER_NAME}-adminpc-https.entrypoints=websecure"
+             - "traefik.http.routers.${HM_SERVER_NAME}-adminpc-https.tls=true"
+        #    - "traefik.http.routers.${HM_SERVER_NAME}-adminpc-https.tls.certresolver=letsencrypt"
+            
+             - "traefik.http.services.${HM_SERVER_NAME}.loadbalancer.server.port=80"
+             - "traefik.http.services.${HM_SERVER_NAME}.loadbalancer.server.scheme=http"
+             - "traefik.http.services.${HM_SERVER_NAME}.loadbalancer.sticky=true"
+             - "traefik.http.services.${HM_SERVER_NAME}.loadbalancer.sticky.cookie.name=traefik"
+
+             - "traefik.docker.network=traefik_default"
+      networks:
+            - traefik_default
+            - local_stack
+      volumes:
+          - 'hm-data_vol01:/user_data/'
+          - 'hm-logs_vol01:/data/logs/'
+
+
+          #- 'ssl-certificates_vol01:/root/hm_ssl_certificates/'
+          - '/root/ssl_certificates/:/root/hm_ssl_certificates/'
+         #- '/backups/:/backups/'
+      depends_on:
+        - hm-db
+        - hm-memcached
+
+ hm-web-replica:
+      image: ${PRODUCT_SOURCE}/hm-ha-web:${PRODUCT_VERSION}
+      hostname: wifi-nodeX
+      environment:
+             - TZ=${TZ}
+             - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+             - OPERATOR=${OPERATOR}
+             - HM_SERVER_NAME=${HM_SERVER_NAME}
+             - HM_URL_SUFFIX=${HM_URL_SUFFIX}
+             - HOTSPOT_ALIAS1=${HOTSPOT_ALIAS1}
+             - ADMIN_ALIAS1=${ADMIN_ALIAS1}
+             - OPERATOR_SUPPORT_EMAIL=${OPERATOR_SUPPORT_EMAIL}
+             - LICENCE_SERVER=${LICENCE_SERVER}
+             - RSYSLOG_SERVER=${RSYSLOG_SERVER}
+             - SYMFONY_VERSION=1.5.15
+             - REPLICA=1
+      deploy:
+         replicas: 2
+         placement:
+             max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+                 - node.hostname != CLOUD02-01
+         labels:
+             - "traefik.enable=true"
+             
+             - "traefik.http.routers.${HM_SERVER_NAME}-pc-http.rule=Host(`${HM_SERVER_NAME}.${HM_URL_SUFFIX}`) || Host(`${HM_SERVER_NAME}-api.${HM_URL_SUFFIX}`)"
+             - "traefik.http.routers.${HM_SERVER_NAME}-pc-http.entrypoints=web"
+             
+             - "traefik.http.routers.${HM_SERVER_NAME}-pc-https.rule=Host(`${HM_SERVER_NAME}.${HM_URL_SUFFIX}`) || Host(`${HM_SERVER_NAME}-api.${HM_URL_SUFFIX}`)"
+             - "traefik.http.routers.${HM_SERVER_NAME}-pc-https.entrypoints=websecure"
+             - "traefik.http.routers.${HM_SERVER_NAME}-pc-https.tls=true"
+             
+             - "traefik.http.services.${HM_SERVER_NAME}-replica.loadbalancer.server.port=80"
+             - "traefik.http.services.${HM_SERVER_NAME}-replica.loadbalancer.server.scheme=http"
+             - "traefik.http.services.${HM_SERVER_NAME}-replica.loadbalancer.sticky=true"
+             - "traefik.http.services.${HM_SERVER_NAME}-replica.loadbalancer.sticky.cookie.name=traefik"
+             
+             #- "traefik.docker.network=traefik_default"
+             # Update parameter to traefik v3
+             - "traefik.swarm.network=traefik_default"
+      networks:
+             traefik_default:
+             local_stack:
+                    aliases:
+                      - hm-web
+      volumes:
+          - 'hm-data_replica:/user_data/'
+          - 'hm-logs_vol01:/data/logs/'
+         #- 'ssl-certificates_vol01:/root/hm_ssl_certificates/'
+          - '/root/ssl_certificates/:/root/hm_ssl_certificates/'
+      depends_on:
+        - hm-db
+        - hm-web
+
+ hm-memcached:
+      image: memcached:1.4.39
+      command: "memcached -p 11212"
+      deploy:
+         placement:
+             max_replicas_per_node: 1
+      networks:
+             - local_stack
+
+ hm-rsyslog:
+      image: ${PRODUCT_SOURCE}/hm-rsyslog:${PRODUCT_VERSION}
+      environment:
+             - TZ=${TZ}
+             - RSYSLOG_SERVER=${RSYSLOG_SERVER}
+             - RSYSLOG_ROTATE=${RSYSLOG_ROTATE}
+      deploy:
+         placement:
+             max_replicas_per_node: 1
+             constraints:
+                 - node.role == manager
+                 - node.hostname == CLOUD02-01
+      networks:
+             - local_stack
+      ports:
+              - ${LOGHOST_PORT}:514/udp
+      volumes:
+          - 'hm-logs_vol01:/data/logs/'
+        
+ hm-radius-v3:
+      image: ${PRODUCT_SOURCE}/hm-ha-radius-v3:${PRODUCT_VERSION}
+      environment:
+             #- MYSQL_DB_SERVER=
+             - TZ=${TZ}
+             - DEBUG=0
+      #command: "freeradius -XXX"
+      command: "${RADIUS_COMMAND}"
+      deploy:
+         replicas: 3
+         placement:
+             max_replicas_per_node: 1
+      networks:
+             - local_stack
+      ports:
+              #- ${RADIUS_AUTH_PORT}:1812/udp
+              #- ${RADIUS_ACC_PORT}:1813/udp
+              - target: 1812
+                published: ${RADIUS_AUTH_PORT}
+                protocol: udp
+                mode: host
+              - target: 1813
+                published: ${RADIUS_ACC_PORT}
+                protocol: udp
+                mode: host
+
+              #- target: 1812
+              #  published: ${RADIUS_AUTH_PORT}
+              #  protocol: udp
+              #  mode: host
+              #- target: 1813
+              #  published: ${RADIUS_ACC_PORT}
+              #  protocol: udp
+              #  mode: host
+      depends_on:
+        - hm-db
+        - hm-web

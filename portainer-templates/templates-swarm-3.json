@@ -1,0 +1,245 @@
+{
+	"version": "3",
+	"templates": [
+	 {
+	  "administrator_only": true,
+      "id": 1,
+      "type": 2,
+      "title": "Hotspot Manager",
+      "name": "hotspotmanager",
+      "note": "Adipsys HotspotManager : Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+      "description": "Create captive portals compliant with Wi-Fi legislation and collect data.",
+      "platform": "linux",
+      "logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Logo-Hotspot-Manager-200x200-optimise.png",
+      "repository": {
+        "url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose",
+        "stackfile": "docker-stack.yml" },
+      "env": [
+				{
+                    "description": "Images source",
+                    "label": "Source",
+                    "name": "PRODUCT_SOURCE",
+                    "default": "registry.adipsys.com/hotspotmanager",
+                    "preset": true
+                },
+                {
+                    "description": "Release version",
+                    "label": "Release",
+                    "name": "PRODUCT_VERSION",
+                    "default": "3.42.1"
+                },
+                {
+                    "description": "Licence server",
+                    "label": "Release",
+                    "name": "LICENCE_SERVER",
+                    "default": "licences.adipsys.com",
+                    "preset": true
+                },
+                {
+                    "description": "Timezone that will be used by the application",
+                    "label": "Timezone",
+                    "name": "TZ",
+                    "default": "Europe/Paris"
+                },
+				{
+					"description": "Please keep the password for further use.",
+					"label": "MySQL Database Root Password*",
+					"name": "MYSQL_ROOT_PASSWORD"
+				},
+				{
+					"description": "Your Company Name (without spaces nor special chars).",
+					"label": "Operator*",
+					"name": "OPERATOR"
+				},
+				{
+					"default": "wifi",
+					"description": "This is the hostname that will be used with the domain to generate all the URL of the server.",
+					"label": "Server Name*",
+					"name": "HM_SERVER_NAME"
+				},
+				{
+					"description": "i.e. adipsys.com",
+					"label": "Domain*",
+					"name": "HM_URL_SUFFIX"
+				},
+				{
+					"default": "80",
+					"description": "If empty, default port is chosen.",
+					"label": "Web interface HTTP port (TCP)",
+					"name": "WEB_IHM_PORT"
+				},
+				{
+					"default": "443",
+					"description": "If empty, default port is chosen.",
+					"label": "Web interface HTTPS port (TCP)",
+					"name": "WEB_IHM_SSL_PORT"
+				},
+				{
+					"default": "1812",
+					"description": "If empty, default port is chosen.",
+					"label": "Radius authentication port (UDP)",
+					"name": "RADIUS_AUTH_PORT"
+				},
+				{
+					"default": "1813",
+					"description": "If empty, default port is chosen.",
+					"label": "Radius accounting port (UDP)",
+					"name": "RADIUS_ACC_PORT"
+				},
+                {
+                    "default": "514",
+                    "description": "If empty, default port is chosen.",
+                    "label": "Loghost port (UDP)",
+                    "name": "LOGHOST_PORT"
+                },
+				{
+					"default": "support@adipsys.com",
+					"label": "Your Company support Email.",
+					"name": "OPERATOR_SUPPORT_EMAIL"
+				}
+			]
+
+    },
+	{
+		"administrator_only": true,
+		"id": 2,
+		"type": 2,
+		"title": "DNS Protect",
+		"name": "dnsprotect",
+		"note": "Adipsys DNSprotect : Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+		"description": "Securize Wi-Fi connection: protect users by filtering malicious/illegal contents.",
+		"platform": "linux",
+		"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Pictos-dns-protect-200x200-optimise.png",
+		"repository": {
+		  "url": "https://gitlab.adipsys.com/deploy/dnsprotect-compose",
+		  "stackfile": "docker-stack.yml" },
+		"env": [
+			{
+				"description": "Images source",
+				"label": "Source",
+				"name": "PRODUCT_SOURCE",
+				"default": "registry.adipsys.com/dnsprotect",
+				"preset": true
+			},
+			{
+				"description": "Release version",
+				"label": "Release",
+				"name": "PRODUCT_VERSION",
+				"default": "3.0.0"
+			},
+			{
+				"description": "Licence server",
+				"label": "Release",
+				"name": "LICENCE_SERVER",
+				"default": "licences.adipsys.com",
+				"preset": true
+			},
+			{
+				"description": "Please keep the password for further use.",
+				"label": "MySQL Database Root Password*",
+				"name": "MYSQL_ROOT_PASSWORD"
+			},
+			{
+				"description": "This is the URL of the Admin interface (has also to be set onto your DNS)",
+				"label": "Server URL*",
+				"name": "SERVER_NAME"
+			},
+			{
+				"default": "godnsp!",
+				"description": "Use account : admin",
+				"label": "Administration interface password",
+				"name": "ADMIN_PASSWD"
+			},
+			{
+				"default": "80",
+				"description": "If empty, default port is chosen. (it is not advised to use a different port)",
+				"label": "Web interface HTTP port (TCP)",
+				"name": "WEB_IHM_PORT"
+			},
+			{
+				"default": "443",
+				"description": "If empty, default port is chosen.",
+				"label": "Web interface HTTPS port (TCP)",
+				"name": "WEB_IHM_SSL_PORT"
+			},
+			{
+				"default": "53",
+				"description": "If empty, default port is chosen. (it is not advised to use a different port)",
+				"label": "DNS server port (UDP)",
+				"name": "DNS_PORT"
+			}
+		]
+	},
+	{
+		"administrator_only": true,
+		"id": 3,
+		"type": 2,
+		"title": "STUDIO",
+		"name": "studio",
+		"note": "Adipsys STUDIO : Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+		"description": "Create and broadcast targeted advertising and informational contents before and / or after the captive portal.",
+		"platform": "linux",
+		"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Picto-Studio-200x200-optimise.png",
+		"repository": {
+		  "url": "https://gitlab.adipsys.com/deploy/studio-compose",
+		  "stackfile": "docker-stack.yml" },
+		"env": [
+			{
+				"description": "Images source",
+				"label": "Source",
+				"name": "PRODUCT_SOURCE",
+				"default": "registry.adipsys.com/studio",
+				"preset": true
+			},
+			{
+				"description": "Release version",
+				"label": "Release",
+				"name": "PRODUCT_VERSION",
+				"default": "1.1.22"
+			},
+			{
+				"description": "Timezone that will be used by the application",
+				"label": "Timezone",
+				"name": "TZ",
+				"default": "Europe/Paris"
+			},
+			{
+				"description": "Please keep the password for further use.",
+				"label": "MySQL Database Root Password*",
+				"name": "MYSQL_ROOT_PASSWORD"
+			},
+			{
+				"description": "Your Company Name (without spaces nor special chars).",
+				"label": "Operator*",
+				"name": "OPERATOR"
+			},
+			{
+				"description": "This is the URL of the server (has also to be set onto your DNS).",
+				"label": "Server URL*",
+				"name": "STUDIO_NAME"
+			},
+			{
+				"default": "80",
+				"description": "If empty, default port is chosen.",
+				"label": "Web interface HTTP port (TCP)",
+				"name": "WEB_IHM_PORT"
+			},
+			{
+				"default": "443",
+				"description": "If empty, default port is chosen.",
+				"label": "Web interface HTTPS port (TCP)",
+				"name": "WEB_IHM_SSL_PORT"
+			},
+			{
+				"default": "support@adipsys.com",
+				"label": "Support Email*",
+				"name": "OPERATOR_SUPPORT_EMAIL"
+			},
+			{
+				"label": "Administration interface Password*",
+				"name": "ADMIN_PASSWD"
+			}
+		]	
+	}
+ ]
+}

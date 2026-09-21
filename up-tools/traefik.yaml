@@ -1,0 +1,10 @@
+tls:
+  certificates:
+    - certFile: /root/ssl_certificates/domaine.fr.bun
+      keyFile: /root/ssl_certificates/domaine.fr.key
+  options:
+    default:
+      minVersion: VersionTLS12
+
+    mintls13:
+      minVersion: VersionTLS13

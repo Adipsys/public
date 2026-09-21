@@ -1,0 +1,13 @@
+version: '3.7'
+
+services:
+ zabbix-agent:
+      image: zabbix/zabbix-agent
+      restart: always
+      environment:
+         - ZBX_HOSTNAME=${ZBX_HOSTNAME}
+         - ZBX_SERVER_HOST=${ZBX_SERVER_HOST}
+         - ZBX_PASSIVESERVERS=${ZBX_PASSIVESERVERS}
+         - ZBX_ACTIVESERVERS=${ZBX_ACTIVESERVERS}
+      ports:
+         - 10050:10050

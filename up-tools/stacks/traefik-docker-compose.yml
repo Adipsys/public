@@ -1,0 +1,61 @@
+version: '3.8'
+
+#networks:
+#  traefik:
+#    name: traefik
+#    internal: true
+#    attachable: true
+
+services:
+  reverse-proxy:
+    image: traefik:latest
+    command:
+      - "--api=true"
+      - "--api.dashboard=true"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      # - "--providers.file.filename=/traefik/traefik.yaml"
+      - "--providers.docker.swarmMode=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=traefik"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # ...
+      - "--certificatesResolvers.letsEncrypt.acme.email=support@adipsys.com"
+      - "--certificatesResolvers.letsEncrypt.acme.storage=acme.json"
+      # used during the challenge
+      - "--certificatesResolvers.letsEncrypt.acme.httpChallenge.entryPoint=web"
+      #- "--log.level=debug"
+      - "--serverstransport.insecureskipverify=true"
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      # So that Traefik can listen to the Docker events
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Put certs files here
+      # - '/root/ssl_certificates/:/root/ssl_certificates/'
+      
+      # Put certs configuration in traefik.yaml with format below :
+      # tls:
+      # certificates:
+      #   - certFile: /root/ssl_certificates/domain.fr.crt
+      #     keyFile: /root/ssl_certificates/domain.fr.key
+      
+      - '/root/traefik/:/traefik/'
+    #networks:
+    #  - traefik
+    deploy:
+      placement:
+        max_replicas_per_node: 1
+        constraints:
+          - node.role == manager
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=Host(`traefik-ui.local`)"
+        - "traefik.http.routers.traefik.entrypoints=web"
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.routers.traefik.middlewares=traefik-auth"
+        # Password hash will be generated with: htpasswd -nBC 10 <username> (dollars sign must be doubled for escaping)
+        - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$2y$10$xG7xWIpcV3BMHyIdmA.p5OB8sNgNRYyJ13t2blee/hjJIXw3UotF."
+        - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
+        - "traefik.docker.network=traefik"

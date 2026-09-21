@@ -1,0 +1,7 @@
+#mkdir -p /backups/docker-engine/; mkdir -p /backups/docker-volume/; mkdir -p /backups/docker-db/
+
+0 0 * * * /usr/local/bin/up-tools/docker-engine-backup.sh -s "/var/lib/docker/swarm" -t "/backups/docker-engine/" -d 30
+5 0 * * * /usr/local/bin/up-tools/docker-volume-backup.sh -v "portainer_data" -t "/backups/docker-volume/" -d 30
+
+10 0 * * * /usr/local/bin/up-tools/docker-volume-backup.sh -v "hotspotmanager_hm-data_vol01" -t "/backups/docker-volume/" -d 30
+15 0 * * * /usr/local/bin/up-tools/docker-db-backup.sh -c hotspotmanager_hm-db -t /backups/docker-db/ -p keeChee8 -d 30

@@ -1,0 +1,367 @@
+{
+	"version": "2",
+	"templates": [
+		{
+			"administrator_only": true,
+			"description": "Create captive portals compliant with Wi-Fi legislation and collect data.",
+			"env": [
+				{
+                    "description": "Images source",
+                    "label": "Source",
+                    "name": "PRODUCT_SOURCE",
+                    "default": "registry.adipsys.com/hotspotmanager",
+                    "preset": true
+                },
+                {
+                    "description": "Release version",
+                    "label": "Release",
+                    "name": "PRODUCT_VERSION",
+                    "default": "3.42.1"
+                },
+                {
+                    "description": "Licence server",
+                    "label": "Release",
+                    "name": "LICENCE_SERVER",
+                    "default": "licences.adipsys.com",
+                    "preset": true
+                },
+                {
+                    "description": "Timezone that will be used by the application",
+                    "label": "Timezone",
+                    "name": "TZ",
+                    "default": "Europe/Paris"
+                },
+				{
+					"description": "Please keep the password for further use.",
+					"label": "MySQL Database Root Password*",
+					"name": "MYSQL_ROOT_PASSWORD"
+				},
+				{
+					"description": "Your Company Name (without spaces nor special chars).",
+					"label": "Operator*",
+					"name": "OPERATOR"
+				},
+				{
+					"default": "wifi",
+					"description": "This is the hostname that will be used with the domain to generate all the URL of the server.",
+					"label": "Server Name*",
+					"name": "HM_SERVER_NAME"
+				},
+				{
+					"description": "i.e. adipsys.com",
+					"label": "Domain*",
+					"name": "HM_URL_SUFFIX"
+				},
+				{
+					"default": "1812",
+					"description": "If empty, default port is chosen.",
+					"label": "Radius authentication port (UDP)",
+					"name": "RADIUS_AUTH_PORT"
+				},
+				{
+					"default": "1813",
+					"description": "If empty, default port is chosen.",
+					"label": "Radius accounting port (UDP)",
+					"name": "RADIUS_ACC_PORT"
+				},
+                {
+                    "default": "514",
+                    "description": "If empty, default port is chosen.",
+                    "label": "Loghost port (UDP)",
+                    "name": "LOGHOST_PORT"
+                },
+				{
+					"description": "If you need a secondary URL for your Hotspot.",
+					"label": "Hotspot URL Alias",
+					"name": "HOTSPOT_ALIAS1"
+				},
+				{
+					"description": "If you need a secondary URL for your Admin interface.",
+					"label": "Admin URL Alias",
+					"name": "ADMIN_ALIAS1"
+				},
+				{
+					"description": "If you need to send logs on another server (ie. LOGview).",
+					"label": "Loghost",
+					"name": "RSYSLOG_SERVER"
+				},
+				{
+					"default": "support@adipsys.com",
+					"label": "Your Company support Email.",
+					"name": "OPERATOR_SUPPORT_EMAIL"
+				}
+			],
+			"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Logo-Hotspot-Manager-200x200-optimise.png",
+			"note": "Adipsys HotspotManager : Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+			"platform": "linux",
+			"repository": {
+				"stackfile": "docker-stack-wtraefik.yml",
+				"url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose"
+			},
+			"title": "HotspotManager (traefik)",
+			"type": 2
+		},
+		{
+			"administrator_only": true,
+			"description": "Securize Wi-Fi connection: protect users by filtering malicious/illegal contents.",
+			"env": [
+				{
+                    "description": "Images source",
+                    "label": "Source",
+                    "name": "PRODUCT_SOURCE",
+                    "default": "registry.adipsys.com/dnsprotect",
+                    "preset": true
+                },
+                {
+                    "description": "Release version",
+                    "label": "Release",
+                    "name": "PRODUCT_VERSION",
+                    "default": "3.0.0"
+                },
+				{
+                    "description": "Licence server",
+                    "label": "Release",
+                    "name": "LICENCE_SERVER",
+                    "default": "licences.adipsys.com",
+                    "preset": true
+                },
+				{
+					"description": "Please keep the password for further use.",
+					"label": "MySQL Database Root Password*",
+					"name": "MYSQL_ROOT_PASSWORD"
+				},
+				{
+					"description": "This is the URL of the Admin interface (has also to be set onto your DNS)",
+					"label": "Server URL*",
+					"name": "SERVER_NAME"
+				},
+				{
+					"description": "If you wish to use a secondary name or a wildcard (has also to be set onto your DNS)",
+					"label": "Server Alias",
+					"name": "SERVER_ALIAS"
+				},
+				{
+					"default": "godnsp!",
+					"description": "Use account : admin",
+					"label": "Administration interface password",
+					"name": "ADMIN_PASSWD"
+				},
+				{
+					"default": "53",
+					"description": "If empty, default port is chosen. (it is not advised to use a different port)",
+					"label": "DNS server port (UDP)",
+					"name": "DNS_PORT"
+				},
+				{
+					"description": "If you need to send logs on another server (ie. LOGview).",
+					"label": "Loghost",
+					"name": "RSYSLOG_SERVER"
+				}
+			],
+			"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Pictos-dns-protect-200x200-optimise.png",
+			"note": "Adipsys DNSprotect : Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+			"platform": "linux",
+			"repository": {
+				"stackfile": "docker-stack-wtraefik.yml",
+				"url": "https://gitlab.adipsys.com/deploy/dnsprotect-compose"
+			},
+			"title": "DNSprotect (traefik)",
+			"type": 2
+		},
+		{
+			"administrator_only": true,
+			"description": "Create and broadcast targeted advertising and informational contents before and / or after the captive portal.",
+			"env": [
+				{
+                    "description": "Images source",
+                    "label": "Source",
+                    "name": "PRODUCT_SOURCE",
+                    "default": "registry.adipsys.com/studio",
+                    "preset": true
+                },
+                {
+                    "description": "Release version",
+                    "label": "Release",
+                    "name": "PRODUCT_VERSION",
+                    "default": "1.1.22"
+                },
+				{
+					"description": "Please keep the password for further use.",
+					"label": "MySQL Database Root Password*",
+					"name": "MYSQL_ROOT_PASSWORD"
+				},
+				{
+					"description": "Your Company Name (without spaces nor special chars).",
+					"label": "Operator*",
+					"name": "OPERATOR"
+				},
+				{
+					"description": "This is the URL of the server (has also to be set onto your DNS).",
+					"label": "Server URL*",
+					"name": "STUDIO_NAME"
+				},
+				{
+					"default": "support@adipsys.com",
+					"label": "Support Email*",
+					"name": "OPERATOR_SUPPORT_EMAIL"
+				},
+				{
+					"label": "Administration interface Password*",
+					"name": "ADMIN_PASSWD"
+				}
+			],
+			"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Picto-Studio-200x200-optimise.png",
+			"note": "Adipsys STUDIO : Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+			"platform": "linux",
+			"repository": {
+				"stackfile": "docker-stack-wtraefik.yml",
+				"url": "https://gitlab.adipsys.com/deploy/studio-compose"
+			},
+			"title": "STUDIO (traefik)",
+			"type": 2
+		},
+		{
+			"administrator_only": true,
+			"description": "Monitor UP! from an external Zabbix server.",
+			"env": [
+				{
+					"label": "Hostname",
+					"name": "ZBX_HOSTNAME"
+				},
+				{
+					"label": "Server",
+					"name": "ZBX_SERVER_HOST"
+				},
+				{
+					"label": "Passive servers",
+					"name": "ZBX_PASSIVESERVERS"
+				},
+				{
+					"label": "Active serveres",
+					"name": "ZBX_ACTIVESERVERS"
+				}
+			],
+			"image": "zabbix/zabbix-agent",
+			"logo": "https://assets.zabbix.com/img/logo/zabbix_logo_313x82.png",
+			"note": "Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+			"platform": "linux",
+			"ports": [
+				"10050:10050/tcp"
+			],
+			"title": "Zabbix-Agent",
+			"type": 1
+		},
+		{
+			"administrator_only": true,
+			"description": "HA setup (advanced users only)",
+			"env": [
+				{
+                    "description": "Images source",
+                    "label": "Source",
+                    "name": "PRODUCT_SOURCE",
+                    "default": "registry.adipsys.com/hotspotmanager",
+                    "preset": true
+                },
+                {
+                    "description": "Release version",
+                    "label": "Release",
+                    "name": "PRODUCT_VERSION",
+                    "default": "3.42.1"
+                },
+                {
+                    "description": "Licence server",
+                    "label": "Release",
+                    "name": "LICENCE_SERVER",
+                    "default": "licences.adipsys.com",
+                    "preset": true
+                },
+                {
+                    "description": "Timezone that will be used by the application",
+                    "label": "Timezone",
+                    "name": "TZ",
+                    "default": "Europe/Paris"
+                },
+				{
+					"description": "Please keep the password for further use.",
+					"label": "MySQL Database Root Password*",
+					"name": "MYSQL_ROOT_PASSWORD"
+				},
+				{
+					"description": "Your Company Name (without spaces nor special chars).",
+					"label": "Operator*",
+					"name": "OPERATOR"
+				},
+				{
+					"default": "wifi",
+					"description": "This is the hostname that will be used with the domain to generate all the URL of the server.",
+					"label": "Server Name*",
+					"name": "HM_SERVER_NAME"
+				},
+				{
+					"description": "i.e. adipsys.com",
+					"label": "Domain*",
+					"name": "HM_URL_SUFFIX"
+				},
+				{
+					"default": "1812",
+					"description": "If empty, default port is chosen.",
+					"label": "Radius authentication port (UDP)",
+					"name": "RADIUS_AUTH_PORT"
+				},
+				{
+					"default": "1813",
+					"description": "If empty, default port is chosen.",
+					"label": "Radius accounting port (UDP)",
+					"name": "RADIUS_ACC_PORT"
+				},
+                {
+                    "default": "514",
+                    "description": "If empty, default port is chosen.",
+                    "label": "Loghost port (UDP)",
+                    "name": "LOGHOST_PORT"
+                },
+				{
+					"description": "If you need a secondary URL for your Hotspot.",
+					"label": "Hotspot URL Alias",
+					"name": "HOTSPOT_ALIAS1"
+				},
+				{
+					"description": "If you need a secondary URL for your Admin interface.",
+					"label": "Admin URL Alias",
+					"name": "ADMIN_ALIAS1"
+				},
+				{
+					"description": "If you need to send logs on another server (ie. LOGview).",
+					"label": "Loghost",
+					"name": "RSYSLOG_SERVER"
+				},
+				{
+					"default": "support@adipsys.com",
+					"label": "Your Company support Email.",
+					"name": "OPERATOR_SUPPORT_EMAIL"
+				}
+			],
+			"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Logo-Hotspot-Manager-200x200-optimise.png",
+			"note": "Adipsys HotspotManager HA : Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+			"platform": "linux",
+			"repository": {
+				"stackfile": "docker-stack-ha.yml",
+				"url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose"
+			},
+			"title": "HotspotManager HA (traefik)",
+			"type": 2
+		},
+		{
+			"administrator_only": true,
+			"description": "Reverse proxy (advanced users only)",
+			"note": "Please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com",
+			"platform": "linux",
+			"repository": {
+				"stackfile": "traefik-3.yml",
+				"url": "https://gitlab.adipsys.com/deploy/hotspotmanager-compose"
+			},
+			"title": "Traefik",
+			"type": 2
+		}
+	]
+}
