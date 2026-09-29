@@ -162,8 +162,8 @@
 		"platform": "linux",
 		"logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Picto-Studio-200x200-optimise.png",
 		"repository": {
-		  "url": "https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/studio-compose",
-		  "stackfile": "docker-stack-wtraefik.yml" },
+		  "url": "https://github.com/Adipsys/public.git",
+		  "stackfile": "/studio-compose/docker-stack-wtraefik.yml" },
 		"env": [
 			{
 				"description": "Images source",
