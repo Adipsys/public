@@ -19,7 +19,7 @@ networks:
 services:
 # Rename to hm-db-seed when bootstraping a cluster.
  hm-db-seed:
-    image: ${PRODUCT_SOURCE}/hm-ha-db:3.42.0
+    image: ${PRODUCT_SOURCE}/hm-ha-db:3.40.0
     command : seed
     # command: no-galera
     environment:
@@ -43,7 +43,7 @@ services:
           - 'hm-db_vol01:/var/lib/mysql/'
 
  hm-db:
-    image: ${PRODUCT_SOURCE}/hm-ha-db:3.42.0
+    image: ${PRODUCT_SOURCE}/hm-ha-db:3.40.0
     command : node tasks.hm-db-seed,tasks.hm-db
     environment:
       - TZ=${TZ}
