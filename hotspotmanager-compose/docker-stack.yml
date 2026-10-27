@@ -16,7 +16,7 @@ volumes:
 services:
 # Rename to hm-db-seed when bootstraping a cluster.
  hm-db:
-    image: ${PRODUCT_SOURCE}/hm-ha-db:3.42.0
+    image: ${PRODUCT_SOURCE}/hm-ha-db:3.40.0
     command : seed
     # command: no-galera
     environment:
