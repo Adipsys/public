@@ -8,7 +8,7 @@ Dans les autres cas (Debian déjà installée, proxy d'entreprise), suivez le [g
 
 ## Avant de commencer
 
-- **Une machine virtuelle** : 4 vCPU, 4 Go de RAM (8 Go pour DNS Protect), 100 Go de disque SSD.
+- **Une machine virtuelle** : 4 vCPU, 4 Go de RAM (8 Go pour DNS Protect, 16 Go et 8 vCPU pour plusieurs produits sur le même serveur), 100 Go de disque SSD.
 - **Une adresse IP fixe** pour le serveur, et un accès à Internet en HTTPS (port 443).
 - **Les noms DNS** des produits, par exemple `wifi.domaine.fr`, qui pointent vers l'IP publique du serveur.
 - **Le certificat HTTPS** de votre entreprise, ou rien si vous utilisez Let's Encrypt (certificat gratuit et automatique).
