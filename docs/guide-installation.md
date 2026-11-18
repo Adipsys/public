@@ -280,7 +280,7 @@ Le serveur sauvegarde chaque nuit son état et ses bases dans `/backups/`, avec 
 | 00:15 | Bases de données des produits | `/backups/docker-db/` |
 | À chaque `up-update` | Base et données du produit mis à jour | `/backups/pre-update/` |
 
-Restaurer après une mise à jour ratée : utilisez la commande `--rollback` de `up-update` (section [Mettre à jour](#mettre-à-jour)). Pour toute autre restauration, ou en cas de doute, contactez le support Adipsys : une restauration efface les données plus récentes que la sauvegarde.
+Restaurer après une mise à jour ratée : utilisez la commande `--rollback` de `up-update` (section [Mettre à jour](#mettre-à-jour)). Pour toute autre restauration, ou en cas de doute, contactez le support Adipsys ([support@adipsys.com](mailto:support@adipsys.com)) : une restauration efface les données plus récentes que la sauvegarde.
 
 Le snapshot de la VM avant chaque intervention reste la protection la plus simple.
 
@@ -300,7 +300,9 @@ La plupart des échecs viennent d'un accès réseau bloqué : relancez `up-setup
 | Certificat Let's Encrypt non obtenu | Nom DNS absent ou port 80 fermé depuis Internet | Vérifier le DNS et l'ouverture du port 80, puis consulter les logs du service Traefik |
 | Heure non synchronisée | Port 123/udp bloqué | Autoriser NTP ou indiquer un serveur NTP interne |
 
-### Informations à transmettre au support
+### Contacter le support
+
+Écrivez à [support@adipsys.com](mailto:support@adipsys.com) en décrivant le problème, avec les éléments suivants :
 
 - Le fichier `/root/up-install-report.txt` (ne contient pas de mot de passe).
 - La version du serveur : `cat /etc/up-release`.

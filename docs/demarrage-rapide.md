@@ -51,6 +51,6 @@ Votre serveur est prêt.
 
 - **Mettre à jour un produit** : `up-update -l` affiche les versions installées, puis `up-update -s <produit> -v <version>` installe celle indiquée par Adipsys. Le système Debian applique seul ses mises à jour de sécurité.
 - **Sauvegarder** : copiez régulièrement `/root/up-secrets.env` et les sauvegardes des produits hors du serveur.
-- **Besoin d'aide** : envoyez au support Adipsys le fichier `/root/up-install-report.txt` et le journal `/var/log/up-setup.log`. N'envoyez jamais `/root/up-secrets.env`.
+- **Besoin d'aide** : écrivez à [support@adipsys.com](mailto:support@adipsys.com) en joignant le fichier `/root/up-install-report.txt` et le journal `/var/log/up-setup.log`. N'envoyez jamais `/root/up-secrets.env`.
 
 Pour les autres cas (proxy, Debian existante, certificat d'entreprise à renouveler), reportez-vous au [guide d'installation complet](guide-installation.md).
