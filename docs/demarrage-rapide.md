@@ -4,7 +4,7 @@
 
 Ce guide installe un serveur Adipsys UP en une trentaine de minutes, dans le cas le plus courant : **un seul serveur**, installé **avec l'ISO Adipsys**, avec un **accès direct à Internet**.
 
-Dans les autres cas (Debian déjà installée, proxy d'entreprise, plusieurs serveurs en haute disponibilité), suivez le [guide d'installation complet](guide-installation.md).
+Dans les autres cas (Debian déjà installée, proxy d'entreprise), suivez le [guide d'installation complet](guide-installation.md).
 
 ## Avant de commencer
 
@@ -53,4 +53,4 @@ Votre serveur est prêt.
 - **Sauvegarder** : copiez régulièrement `/root/up-secrets.env` et les sauvegardes des produits hors du serveur.
 - **Besoin d'aide** : envoyez au support Adipsys le fichier `/root/up-install-report.txt` et le journal `/var/log/up-setup.log`. N'envoyez jamais `/root/up-secrets.env`.
 
-Pour les autres cas (proxy, Debian existante, certificat d'entreprise à renouveler, haute disponibilité), reportez-vous au [guide d'installation complet](guide-installation.md).
+Pour les autres cas (proxy, Debian existante, certificat d'entreprise à renouveler), reportez-vous au [guide d'installation complet](guide-installation.md).

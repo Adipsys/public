@@ -13,7 +13,6 @@ Pour le cas le plus simple (un serveur, ISO, accès direct à Internet), le [dé
 - [Réseau d'entreprise : proxy et miroirs internes](#réseau-dentreprise--proxy-et-miroirs-internes)
 - [Installer les produits avec l'assistant up-setup](#installer-les-produits-avec-lassistant-up-setup)
 - [Certificats HTTPS](#certificats-https)
-- [Haute disponibilité Hotspot Manager](#haute-disponibilité-hotspot-manager)
 - [Mettre à jour](#mettre-à-jour)
 - [Sauvegardes et restauration](#sauvegardes-et-restauration)
 - [Dépannage](#dépannage)
@@ -30,10 +29,9 @@ flowchart TD
     Q2 -- oui --> P["Options réseau (proxy, miroirs)"]
     Q2 -- non --> S["up-setup : installer les produits"]
     P --> S
-    S -.-> HA["Haute disponibilité : 3 serveurs, depuis Portainer"]
 ```
 
-Les deux chemins (A et B) aboutissent au même serveur. Derrière un proxy, ajoutez les options réseau, puis lancez `up-setup`. Pour la haute disponibilité, préparez 3 serveurs puis installez le produit depuis Portainer.
+Les deux chemins (A et B) aboutissent au même serveur. Derrière un proxy, ajoutez les options réseau, puis lancez `up-setup`.
 
 ## Prérequis
 
@@ -207,7 +205,7 @@ Les interfaces d'administration sont redirigées de HTTP vers HTTPS. Le portail 
 
 ### Renouveler le certificat de l'entreprise
 
-Le nouveau certificat est pris en compte dès que `/root/traefik/traefik.yaml` est enregistré, sans redémarrage ni coupure. Sur un cluster, répétez ces étapes sur chaque serveur.
+Le nouveau certificat est pris en compte dès que `/root/traefik/traefik.yaml` est enregistré, sans redémarrage ni coupure.
 
 1. Connectez-vous en SSH et repérez les fichiers actuels :
 
@@ -225,11 +223,7 @@ Le nouveau certificat est pris en compte dès que `/root/traefik/traefik.yaml` e
 4. Modifiez `certFile` et `keyFile` dans `/root/traefik/traefik.yaml` pour viser les nouveaux fichiers, puis enregistrez.
 5. Ouvrez les adresses du produit dans un navigateur et vérifiez la date d'expiration. Un test sur [SSL Labs](https://www.ssllabs.com/ssltest/) est conseillé.
 
-Garder l'ancien certificat sous son nom permet de revenir en arrière en rétablissant les anciens chemins. Le redémarrage de Traefik n'est normalement pas nécessaire ; si le certificat n'est pas pris en compte, sur chaque serveur : `docker restart $(docker ps -q -f name=traefik)`.
-
-## Haute disponibilité Hotspot Manager
-
-La haute disponibilité repose sur 3 serveurs UP réunis en cluster et s'installe depuis Portainer, pas avec `up-setup`. Préparez les 3 serveurs avec le scénario A ou B, puis suivez le document dédié : [Hotspot Manager en haute disponibilité](haute-disponibilite.md).
+Garder l'ancien certificat sous son nom permet de revenir en arrière en rétablissant les anciens chemins. Le redémarrage de Traefik n'est normalement pas nécessaire ; si le certificat n'est pas pris en compte : `docker restart $(docker ps -q -f name=traefik)`.
 
 ## Mettre à jour
 
@@ -257,7 +251,7 @@ En cas d'échec, elle affiche la commande de retour arrière. Lancez-la seulemen
 up-update -s hotspotmanager --rollback /backups/pre-update/hotspotmanager-3.41.2-20261118-103000/
 ```
 
-En haute disponibilité, lancez la commande sur le serveur principal. Sans `up-update`, la mise à jour se fait aussi dans Portainer : stack → *Editor* → variable `PRODUCT_VERSION` → *Update the stack*, après une sauvegarde de la base.
+Sans `up-update`, la mise à jour se fait aussi dans Portainer : stack → *Editor* → variable `PRODUCT_VERSION` → *Update the stack*, après une sauvegarde de la base.
 
 Le numéro de version à utiliser est communiqué par Adipsys.
 
@@ -281,12 +275,10 @@ Le serveur sauvegarde chaque nuit son état et ses bases dans `/backups/`, avec 
 
 | Heure | Contenu | Dossier |
 |---|---|---|
-| 00:00 | État du cluster Swarm | `/backups/docker-engine/` |
+| 00:00 | État de Docker Swarm | `/backups/docker-engine/` |
 | 00:05 | Données Portainer | `/backups/docker-volumes/` |
 | 00:15 | Bases de données des produits | `/backups/docker-db/` |
 | À chaque `up-update` | Base et données du produit mis à jour | `/backups/pre-update/` |
-
-En haute disponibilité, chaque serveur ne sauvegarde que les bases qui tournent sur lui.
 
 Restaurer après une mise à jour ratée : utilisez la commande `--rollback` de `up-update` (section [Mettre à jour](#mettre-à-jour)). Pour toute autre restauration, ou en cas de doute, contactez le support Adipsys : une restauration efface les données plus récentes que la sauvegarde.
 
