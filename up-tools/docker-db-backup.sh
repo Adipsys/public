@@ -46,9 +46,9 @@ fi
 dump()
 {
     if [ -n "$PASSWORD" ]; then
-        docker exec "$1" /usr/bin/mysqldump -u root --password="$PASSWORD" --all-databases
+        docker exec "$1" /usr/bin/mysqldump -u root --password="$PASSWORD" --all-databases --single-transaction --routines --events
     else
-        docker exec "$1" sh -c 'exec /usr/bin/mysqldump -u root --password="$MYSQL_ROOT_PASSWORD" --all-databases'
+        docker exec "$1" sh -c 'exec /usr/bin/mysqldump -u root --password="$MYSQL_ROOT_PASSWORD" --all-databases --single-transaction --routines --events'
     fi
 }
 
