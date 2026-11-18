@@ -1,5 +1,7 @@
 # Adipsys UP — Guide d'installation et de mise à jour
 
+*[English version](en/installation-guide.md)*
+
 Ce guide permet d'installer un serveur Adipsys UP, d'y déployer les produits Adipsys et de les maintenir à jour, sans intervention du support dans les cas courants.
 
 Pour le cas le plus simple (un serveur, ISO, accès direct à Internet), le [démarrage rapide](demarrage-rapide.md) suffit.
@@ -159,6 +161,8 @@ Il se met à jour seul au démarrage, peut être interrompu et relancé à tout 
 4. **Traefik** : installation du reverse proxy commun à tous les produits.
 5. **Produits** : cochez ceux à installer, puis répondez pour chacun (société, nom du serveur, domaine, e-mail du support, Let's Encrypt ou non). Les mots de passe sont générés et les noms DNS vérifiés.
 6. **Récapitulatif** : adresses d'administration, noms DNS à créer, ports à ouvrir et étapes restantes.
+
+Relancer `up-setup` sur un serveur où un produit est déjà installé ne modifie pas ce produit : cela permet d'ajouter un autre produit plus tard.
 
 Fichiers créés, lisibles par root uniquement :
 

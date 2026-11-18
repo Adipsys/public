@@ -15,6 +15,8 @@ Ce dépôt contient tout ce que les serveurs **UP** (installés depuis l'ISO Adi
 | [Démarrage rapide](docs/demarrage-rapide.md) | Un serveur, installé avec l'ISO, accès direct à Internet : le cas courant, en 3 étapes. |
 | [Guide d'installation et de mise à jour](docs/guide-installation.md) | Tous les cas : Debian existante, proxy, certificats, mises à jour, sauvegardes, dépannage. |
 
+English: [Quick start](docs/en/quick-start.md) · [Installation and update guide](docs/en/installation-guide.md)
+
 La suite de ce README s'adresse aux équipes Adipsys (fonctionnement technique du dépôt).
 
 ## Contenu
