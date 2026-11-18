@@ -559,16 +559,42 @@ step_summary()
     cat "$REPORT_FILE"
 }
 
+# ---------------------------------------------------------------- Mise à jour des outils
+
+# Met à jour le clone local (script, templates, stacks) puis relance le script s'il a changé :
+# l'installation utilise toujours la dernière version publiée, cohérente entre script et stacks.
+self_update()
+{
+    local before after
+    [[ -z "${UP_SETUP_UPDATED:-}" && -d "${REPO_DIR}/.git" ]] || return 0
+    before="$(git -C "$REPO_DIR" rev-parse HEAD)"
+    echo "Mise à jour des outils Adipsys (${REPO_DIR})..."
+    if ! git -C "$REPO_DIR" pull --ff-only --quiet 2>>"$LOG_FILE"; then
+        log "git pull impossible, version locale ${before} utilisée"
+        echo "Avertissement : mise à jour impossible (accès GitHub ou modifications locales), version locale utilisée."
+        sleep 3
+        return 0
+    fi
+    after="$(git -C "$REPO_DIR" rev-parse HEAD)"
+    if [[ "$before" != "$after" ]]; then
+        log "Outils mis à jour : ${before} → ${after}, relance"
+        export UP_SETUP_UPDATED=1
+        exec bash "$(readlink -f "$0")" "$@"
+    fi
+    log "Outils à jour (${after})"
+}
+
 # ---------------------------------------------------------------- Main
 
 main()
 {
     [[ "$(id -u)" -eq 0 ]] || { echo "À lancer en root."; exit 1; }
-    for cmd in whiptail curl jq docker; do
+    for cmd in whiptail curl jq docker git; do
         command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt-get install -y $cmd)"; exit 1; }
     done
+    self_update "$@"
     [[ -f "$TEMPLATES" ]] || { echo "Templates introuvables : $TEMPLATES"; exit 1; }
-    log "=== Démarrage de up-setup"
+    log "=== Démarrage de up-setup ($(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo '?'))"
 
     msg "Bienvenue dans l'installation d'Adipsys UP!\n\nCet assistant va :\n  1. vérifier le serveur et ses accès Internet ;\n  2. configurer Portainer et le registre Adipsys ;\n  3. installer Traefik puis les produits choisis ;\n  4. afficher un récapitulatif (adresses, mots de passe, ports à ouvrir).\n\nMunissez-vous des identifiants du registre Adipsys et de vos noms de domaine.\nVous pouvez l'interrompre et le relancer à tout moment (commande « up-setup »)." 20
 

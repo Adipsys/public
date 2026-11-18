@@ -71,6 +71,8 @@ Fichiers créés (root uniquement) : `/root/up-secrets.env` (mots de passe), `/r
 `/root/up-install-report.txt` (récapitulatif). Journal : `/var/log/up-setup.log`.
 
 L'assistant déploie les mêmes stacks que les App Templates (définitions lues dans `portainer-templates/templates.json`).
+Au démarrage, il met à jour les outils (`git pull` de `/usr/local/bin/public`) et se relance si une nouvelle version
+est disponible ; sans accès à GitHub, il utilise la version locale.
 
 ## Installer un produit depuis Portainer (méthode manuelle)
 
