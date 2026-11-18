@@ -24,7 +24,7 @@ services:
       - XTRABACKUP_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
       - MYSQL_ROOT_HOST=%
-      - NODE_ADDRESS=^10.200.*.*
+      - NODE_ADDRESS=^10\.(0|200)\.
     deploy:
       replicas: 1
       placement:
