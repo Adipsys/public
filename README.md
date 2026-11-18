@@ -8,6 +8,16 @@ Ce dépôt contient tout ce que les serveurs **UP** (installés depuis l'ISO Adi
 
 > ⚠️ Ce dépôt est **public** : n'y mettez jamais de mot de passe, de clé ou de donnée client.
 
+## Documentation utilisateur
+
+| Guide | Pour qui |
+|---|---|
+| [Démarrage rapide](docs/demarrage-rapide.md) | Un serveur, installé avec l'ISO, accès direct à Internet : le cas courant, en 3 étapes. |
+| [Guide d'installation et de mise à jour](docs/guide-installation.md) | Tous les cas : Debian existante, proxy, certificats, mises à jour, sauvegardes, dépannage. |
+| [Hotspot Manager en haute disponibilité](docs/haute-disponibilite.md) | Cluster de 3 serveurs. |
+
+La suite de ce README s'adresse aux équipes Adipsys (fonctionnement technique du dépôt).
+
 ## Contenu
 
 | Chemin | Rôle |
