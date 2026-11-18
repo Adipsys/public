@@ -181,6 +181,19 @@ echo "--- Paquets de base"
 retry apt-get update
 # shellcheck disable=SC2086
 retry apt-get install -y $PACKAGES
+
+# Synchronisation de l'heure : l'installation Debian ne fournit pas toujours de client NTP.
+# systemd-timesyncd seulement si aucun autre client n'est présent (il remplacerait chrony ou ntpsec).
+# (dpkg-query échoue si l'un des paquets est inconnu : sortie capturée à part, à cause de pipefail.)
+NTP_CLIENTS="$(dpkg-query -W -f '${Status}\n' systemd-timesyncd chrony ntpsec ntp openntpd 2>/dev/null || true)"
+if ! printf '%s\n' "$NTP_CLIENTS" | grep -q '^install ok installed'; then
+    echo "--- Client NTP (systemd-timesyncd)"
+    retry apt-get install -y systemd-timesyncd
+fi
+if command -v timedatectl > /dev/null && [ -d /run/systemd/system ]; then
+    timedatectl set-ntp true 2>/dev/null || true
+fi
+
 if [ -n "$UP_HTTP_PROXY" ]; then
     git config --system http.proxy "$UP_HTTP_PROXY"
 else
