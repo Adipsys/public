@@ -147,7 +147,7 @@ Un serveur totalement isolé, sans aucun accès au serveur de licences, n'est pa
 
 ## Installer les produits avec l'assistant up-setup
 
-L'assistant `up-setup` installe Hotspot Manager, DNS Protect, STUDIO et rSyslog en posant seulement les questions utiles. Lancez-le en root sur le serveur :
+L'assistant `up-setup` installe Hotspot Manager, DNS Protect, STUDIO et rSyslog en posant seulement les questions utiles. Le rSyslog autonome est destiné à un serveur sans Hotspot Manager : Hotspot Manager comprend déjà son propre rSyslog, sur le même port (514/udp). Lancez-le en root sur le serveur :
 
 ```bash
 up-setup
@@ -159,7 +159,7 @@ Il se met à jour seul au démarrage, peut être interrompu et relancé à tout 
 2. **Portainer** : création du compte administrateur avec un mot de passe généré.
 3. **Registre Adipsys** : identifiants repris de l'ISO, ou saisis puis vérifiés avant enregistrement.
 4. **Traefik** : installation du reverse proxy commun à tous les produits.
-5. **Produits** : cochez ceux à installer, puis répondez pour chacun (société, nom du serveur, domaine, e-mail du support, Let's Encrypt ou non). Les mots de passe sont générés et les noms DNS vérifiés.
+5. **Produits** : cochez ceux à installer, puis répondez pour chacun (société, nom du serveur, domaine, e-mail du support, Let's Encrypt ou non). Les mots de passe sont générés, les noms DNS vérifiés, et un produit dont les ports sont déjà utilisés sur le serveur n'est pas installé.
 6. **Récapitulatif** : adresses d'administration, noms DNS à créer, ports à ouvrir et étapes restantes.
 
 Relancer `up-setup` sur un serveur où un produit est déjà installé ne modifie pas ce produit : cela permet d'ajouter un autre produit plus tard.

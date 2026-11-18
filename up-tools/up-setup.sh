@@ -47,6 +47,7 @@ readonly ADIPSYS_IMAGES="${UP_ADIPSYS_REGISTRY:-registry.adipsys.com}"
 readonly REGISTRY="${ADIPSYS_IMAGES%%/*}"
 readonly TITLE="Adipsys UP! - Assistant d'installation"
 readonly WAIT_TIMEOUT="${UP_SETUP_TIMEOUT:-1200}"
+WAIT_FAILURE=""
 readonly POLL="${UP_SETUP_POLL:-10}"
 
 API_KEY=""
@@ -422,6 +423,74 @@ step_registry()
 
 stack_exists() { api GET /stacks | jq -e --arg n "$1" '.[] | select(.Name == $n)' > /dev/null; }
 
+# Remplace ${NOM} et ${NOM:-défaut} par les valeurs de la liste de variables JSON $2.
+resolve_vars()
+{
+    local text="$1" env_json="$2" name value
+    while [[ "$text" =~ \$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^}]*))?\} ]]; do
+        name="${BASH_REMATCH[1]}"
+        value="$(jq -r --arg n "$name" 'first(.[] | select(.name == $n) | .value) // empty' <<< "$env_json")"
+        [[ -n "$value" ]] || value="${BASH_REMATCH[3]}"
+        text="${text/"${BASH_REMATCH[0]}"/$value}"
+    done
+    printf '%s' "$text"
+}
+
+# Ports publiés par un fichier de stack (« port/protocole », un par ligne), variables résolues avec $2.
+# Gère la syntaxe courte (- "8080:80/udp") et longue (target / published / protocol).
+stack_ports()
+{
+    local file="$1" env_json="$2" published proto
+    awk -v q="'" '
+        function flush() { if (pub != "") print pub, (proto == "" ? "tcp" : proto); pub = ""; proto = "" }
+        /^[ \t]*ports:[ \t]*$/ { inp = 1; ind = match($0, /[^ ]/); next }
+        inp {
+            if ($0 ~ /^[ \t]*(#.*)?$/) next
+            if (match($0, /[^ ]/) <= ind) { flush(); inp = 0; next }
+            line = $0; gsub(/"/, "", line); gsub(q, "", line); sub(/^[ \t]+/, "", line)
+            if (line ~ /^- target:/) { flush(); next }
+            if (line ~ /^- /) {
+                flush(); sub(/^- /, "", line)
+                n = split(line, a, "/"); spec = a[1]; pr = (n > 1 ? a[2] : "tcp")
+                if (spec ~ /^[0-9]+$/) next            # port du conteneur seul : non publié
+                sub(/:[^:]*$/, "", spec); print spec, pr; next
+            }
+            if (line ~ /^published:/) { sub(/^published:[ \t]*/, "", line); pub = line }
+            if (line ~ /^protocol:/)  { sub(/^protocol:[ \t]*/, "", line); proto = line }
+        }
+        END { flush() }' "${REPO_DIR}/${file}" \
+    | while read -r published proto; do
+        published="$(resolve_vars "$published" "$env_json")"
+        published="${published##*:}"                    # « IP:port » : garder le port
+        [[ "$published" =~ ^[0-9]+$ ]] && echo "${published}/${proto}"
+    done | sort -u
+}
+
+# Ports déjà pris sur ce serveur : « port/protocole propriétaire », un par ligne.
+used_ports()
+{
+    local id
+    for id in $(docker service ls -q 2>/dev/null); do
+        docker service inspect "$id" --format \
+            '{{$n := .Spec.Name}}{{if .Spec.EndpointSpec}}{{range .Spec.EndpointSpec.Ports}}{{.PublishedPort}}/{{.Protocol}} service {{$n}}{{"\n"}}{{end}}{{end}}' 2>/dev/null
+    done
+    ss -Hlntu 2>/dev/null | awk '{ n = split($5, a, ":"); print a[n] "/" $1 " processus du serveur" }'
+}
+
+# Ports de la stack $1 (variables $2) déjà utilisés : « port/protocole : propriétaire », un par ligne.
+port_conflicts()
+{
+    local wanted used port owner
+    wanted="$(stack_ports "$1" "$2")"
+    [[ -n "$wanted" ]] || return 0
+    used="$(used_ports | sort -u)"
+    while read -r port; do
+        owner="$(awk -v p="$port" '$1 == p { $1 = ""; sub(/^ /, ""); print; exit }' <<< "$used")"
+        [[ -n "$owner" ]] && echo "  ${port} : ${owner}"
+    done <<< "$wanted"
+    return 0
+}
+
 deploy_stack()
 {
     local name="$1" file="$2" env_json="$3" payload
@@ -437,9 +506,17 @@ deploy_stack()
 # Attend que tous les services de la stack tournent.
 wait_stack()
 {
-    local stack="$1" deadline service mode running desired pending
+    local stack="$1" deadline service mode running desired pending empty_deadline
     deadline=$(( $(date +%s) + WAIT_TIMEOUT ))
+    # Aucun service après 2 minutes : le déploiement a échoué (ex. port déjà utilisé), inutile d'attendre.
+    empty_deadline=$(( $(date +%s) + 120 ))
     while (( $(date +%s) < deadline )); do
+        if [[ -z "$(docker stack services "$stack" -q 2>/dev/null)" ]] && (( $(date +%s) >= empty_deadline )); then
+            echo "  ${stack} : aucun service créé, le déploiement a échoué (voir Portainer → Stacks → ${stack})."
+            log "Stack ${stack} : aucun service créé après 2 min"
+            WAIT_FAILURE="aucun service créé : le déploiement a échoué (erreur dans Portainer → Stacks → ${stack})"
+            return 1
+        fi
         pending=0
         for service in $(docker stack services "$stack" --format '{{.Name}}' 2>/dev/null); do
             mode="$(docker service inspect -f '{{if .Spec.Mode.Replicated}}{{.Spec.Mode.Replicated.Replicas}}{{else}}global{{end}}' "$service")"
@@ -453,6 +530,7 @@ wait_stack()
         echo "  ${stack} : ${pending} service(s) en cours de démarrage (téléchargement des images...)"
         sleep "$POLL"
     done
+    WAIT_FAILURE="tous les services ne sont pas démarrés après $((WAIT_TIMEOUT / 60)) min (voir Portainer → Stacks → ${stack})"
     return 1
 }
 
@@ -472,7 +550,7 @@ with_proxy_env()
 
 step_traefik()
 {
-    local tpl env_json
+    local tpl env_json conflicts
     if stack_exists traefik; then
         log "Traefik déjà déployé"
         return 0
@@ -480,6 +558,10 @@ step_traefik()
     tpl="$(template_json traefik)"
     env_json="$(jq '[.env[]? | {name: .name, value: (.default // "")}]' <<< "$tpl")"
     env_json="$(with_proxy_env "$env_json" "$(stack_file_of "$tpl")")"
+    conflicts="$(port_conflicts "$(stack_file_of "$tpl")" "$env_json")"
+    [[ -z "$conflicts" ]] || abort "Traefik ne peut pas être installé, ports déjà utilisés :
+${conflicts}
+Arrêter le service qui les occupe (ex. serveur web installé sur le système), puis relancer up-setup"
     echo "Déploiement de Traefik..."
     deploy_stack traefik "$(stack_file_of "$tpl")" "$env_json"
     wait_stack traefik || abort "Traefik ne démarre pas (voir Portainer → Stacks → traefik)"
@@ -549,7 +631,7 @@ configure_product()
 
 install_product()
 {
-    local name="$1" tpl env_json stack hosts dns_text
+    local name="$1" tpl env_json stack hosts dns_text conflicts hint=""
 
     tpl="$(template_json "$name")"
     stack="$(ask_or_quit ask_input "Nom de la stack dans Portainer pour $(jq -r .title <<< "$tpl") :" "$name")"
@@ -560,6 +642,15 @@ install_product()
 
     env_json="$(configure_product "$name" "$tpl")"
     env_json="$(with_proxy_env "$env_json" "$(stack_file_of "$tpl")")"
+
+    conflicts="$(port_conflicts "$(stack_file_of "$tpl")" "$env_json")"
+    if [[ -n "$conflicts" ]]; then
+        [[ "$name" == "rsyslog" ]] && hint="\n\nHotspot Manager comprend déjà son propre rSyslog : le rSyslog autonome\nsert sur un serveur sans Hotspot Manager."
+        msg "$(jq -r .title <<< "$tpl") n'est pas installé : ports déjà utilisés sur ce serveur :\n\n${conflicts}\n\nPour choisir d'autres ports, relancez up-setup et répondez « Non »\nà « Garder les réglages par défaut ».${hint}" 18
+        report "⚠ ${stack} non installé : ports déjà utilisés ($(sed 's/^ *//' <<< "$conflicts" | paste -sd, -))"
+        log "Ports déjà utilisés pour ${stack} :\n${conflicts}"
+        return 0
+    fi
 
     hosts="$(product_hostnames "$env_json")"
     if [[ -n "$hosts" ]]; then
@@ -574,10 +665,11 @@ install_product()
     echo "Déploiement de ${stack}..."
     deploy_stack "$stack" "$(stack_file_of "$tpl")" "$env_json"
     log "Stack ${stack} (${name}) déployée"
+    WAIT_FAILURE=""
     if wait_stack "$stack"; then
         INSTALLED+=("${stack}|${name}|$(admin_url_of "$env_json")")
     else
-        report "⚠ ${stack} : tous les services ne sont pas démarrés après $((WAIT_TIMEOUT / 60)) min (voir Portainer → Stacks → ${stack})"
+        report "⚠ ${stack} : ${WAIT_FAILURE}"
         INSTALLED+=("${stack}|${name}|$(admin_url_of "$env_json")")
     fi
     [[ -n "$hosts" ]] && report "Noms DNS pour ${stack} (vers $(primary_ip)) : $(tr '\n' ' ' <<< "$hosts")"
@@ -590,7 +682,7 @@ step_products()
         hotspotmanager "Hotspot Manager - portails captifs" ON \
         dnsprotect     "DNS Protect - filtrage DNS" OFF \
         studio         "STUDIO - contenus et campagnes" OFF \
-        rsyslog        "rSyslog - collecte de logs" OFF)"
+        rsyslog        "rSyslog - collecte de logs (serveur sans Hotspot Manager)" OFF)"
     for name in $(tr -d '"' <<< "$choices"); do
         install_product "$name"
     done
