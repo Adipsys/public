@@ -7,8 +7,8 @@
       "administrator_only": true,
       "title": "Traefik",
       "name": "traefik",
-      "description": "Reverse proxy commun à tous les produits Adipsys.",
-      "note": "A déployer en premier, avant tout produit Adipsys. Crée le réseau traefik_default.",
+      "description": "Reverse proxy shared by all Adipsys products. Install it first.",
+      "note": "Install this template before any Adipsys product. It creates the traefik_default network.",
       "platform": "linux",
       "categories": [
         "Infrastructure"
@@ -33,7 +33,7 @@
       "administrator_only": true,
       "title": "Hotspot Manager",
       "name": "hotspotmanager",
-      "description": "Create captive portals compliant with Wi-Fi legislation and collect data.",
+      "description": "⚠️ Install the Traefik template first. Create captive portals compliant with Wi-Fi legislation and collect data.",
       "note": "Adipsys HotspotManager: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires the Traefik stack.",
       "platform": "linux",
       "categories": [
@@ -124,7 +124,7 @@
       "administrator_only": true,
       "title": "DNS Protect",
       "name": "dnsprotect",
-      "description": "Secure Wi-Fi connections: protect users by filtering malicious/illegal contents.",
+      "description": "⚠️ Install the Traefik template first. Secure Wi-Fi connections: protect users by filtering malicious/illegal contents.",
       "note": "Adipsys DNSprotect: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires the Traefik stack.",
       "platform": "linux",
       "categories": [
@@ -190,7 +190,7 @@
       "administrator_only": true,
       "title": "STUDIO",
       "name": "studio",
-      "description": "Create and broadcast targeted advertising and informational contents before and/or after the captive portal.",
+      "description": "⚠️ Install the Traefik template first. Create and broadcast targeted advertising and informational contents before and/or after the captive portal.",
       "note": "Adipsys STUDIO: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires the Traefik stack.",
       "platform": "linux",
       "categories": [
@@ -292,7 +292,7 @@
       "administrator_only": true,
       "title": "Hotspot Manager HA",
       "name": "hotspotmanager-ha",
-      "description": "High availability setup on a 3-manager Swarm cluster (advanced users only).",
+      "description": "⚠️ Install the Traefik template first. High availability setup on a 3-manager Swarm cluster (advanced users only).",
       "note": "Adipsys HotspotManager HA: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires a 3-manager Swarm cluster and the Traefik stack.",
       "platform": "linux",
       "categories": [
