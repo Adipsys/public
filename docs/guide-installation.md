@@ -147,7 +147,7 @@ Un serveur totalement isolé, sans aucun accès au serveur de licences, n'est pa
 
 ## Installer les produits avec l'assistant up-setup
 
-L'assistant `up-setup` installe Hotspot Manager, DNS Protect, STUDIO et rSyslog en posant seulement les questions utiles. Le rSyslog autonome est destiné à un serveur sans Hotspot Manager : Hotspot Manager comprend déjà son propre rSyslog, sur le même port (514/udp). Lancez-le en root sur le serveur :
+L'assistant `up-setup` installe Hotspot Manager, DNS Protect et STUDIO en posant seulement les questions utiles. Hotspot Manager comprend son propre rSyslog ; un rSyslog autonome, pour un serveur sans Hotspot Manager, s'installe depuis Portainer (*App Templates* → *rSyslog*). Lancez-le en root sur le serveur :
 
 ```bash
 up-setup

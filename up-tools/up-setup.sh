@@ -9,7 +9,7 @@
 #   2. Portainer : compte administrateur, clé d'API (pour up-update.sh) ;
 #   3. registre Adipsys : identifiants vérifiés puis enregistrés dans Portainer ;
 #   4. Traefik (reverse proxy), déployé en premier ;
-#   5. produits (Hotspot Manager, DNS Protect, STUDIO, rSyslog) : questions réduites au nécessaire,
+#   5. produits (Hotspot Manager, DNS Protect, STUDIO) : questions réduites au nécessaire,
 #      mots de passe générés, vérification des noms DNS, déploiement et attente ;
 #   6. récapitulatif : adresses, identifiants, ports à ouvrir, étapes restantes.
 #
@@ -631,7 +631,7 @@ configure_product()
 
 install_product()
 {
-    local name="$1" tpl env_json stack hosts dns_text conflicts hint=""
+    local name="$1" tpl env_json stack hosts dns_text conflicts
 
     tpl="$(template_json "$name")"
     stack="$(ask_or_quit ask_input "Nom de la stack dans Portainer pour $(jq -r .title <<< "$tpl") :" "$name")"
@@ -645,8 +645,7 @@ install_product()
 
     conflicts="$(port_conflicts "$(stack_file_of "$tpl")" "$env_json")"
     if [[ -n "$conflicts" ]]; then
-        [[ "$name" == "rsyslog" ]] && hint="\n\nHotspot Manager comprend déjà son propre rSyslog : le rSyslog autonome\nsert sur un serveur sans Hotspot Manager."
-        msg "$(jq -r .title <<< "$tpl") n'est pas installé : ports déjà utilisés sur ce serveur :\n\n${conflicts}\n\nPour choisir d'autres ports, relancez up-setup et répondez « Non »\nà « Garder les réglages par défaut ».${hint}" 18
+        msg "$(jq -r .title <<< "$tpl") n'est pas installé : ports déjà utilisés sur ce serveur :\n\n${conflicts}\n\nPour choisir d'autres ports, relancez up-setup et répondez « Non »\nà « Garder les réglages par défaut »." 18
         report "⚠ ${stack} non installé : ports déjà utilisés ($(sed 's/^ *//' <<< "$conflicts" | paste -sd, -))"
         log "Ports déjà utilisés pour ${stack} :\n${conflicts}"
         return 0
@@ -678,11 +677,10 @@ install_product()
 step_products()
 {
     local choices name
-    choices="$(ask_or_quit ui --checklist "Produits à installer (espace pour cocher) :" 15 76 4 \
+    choices="$(ask_or_quit ui --checklist "Produits à installer (espace pour cocher) :" 14 76 3 \
         hotspotmanager "Hotspot Manager - portails captifs" ON \
         dnsprotect     "DNS Protect - filtrage DNS" OFF \
-        studio         "STUDIO - contenus et campagnes" OFF \
-        rsyslog        "rSyslog - collecte de logs (serveur sans Hotspot Manager)" OFF)"
+        studio         "STUDIO - contenus et campagnes" OFF)"
     for name in $(tr -d '"' <<< "$choices"); do
         install_product "$name"
     done
