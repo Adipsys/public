@@ -50,13 +50,48 @@ Les interfaces d'administration sont redirigées de HTTP vers HTTPS ; le portail
 
 ## Mettre à jour un produit
 
-Dans Portainer, ouvrir la stack → onglet *Editor* :
+Les images appliquent automatiquement les migrations de base au démarrage, **sans retour arrière possible** :
+revenir à l'ancienne version impose de restaurer la base d'avant la mise à jour. Un snapshot de la VM reste recommandé.
 
-1. modifier la variable **`PRODUCT_VERSION`** ;
-2. cliquer sur **Update the stack**.
+### Méthode recommandée : `up-update.sh`
 
-Les images de l'application changent de version ; les volumes (données) sont conservés.
-Il est conseillé de lancer une sauvegarde de la base juste avant (voir [Sauvegardes](#sauvegardes)).
+```bash
+/usr/local/bin/public/up-tools/up-update.sh -l                          # stacks et versions
+/usr/local/bin/public/up-tools/up-update.sh -s hotspotmanager -v 3.41.3 # mise à jour
+```
+
+Le script :
+
+1. vérifie que la stack est saine et qu'il reste au moins 1 Go libre ;
+2. sauvegarde la base (`mysqldump`) et les volumes de données (hors base, logs et index Elasticsearch)
+   dans `/backups/pre-update/<stack>-<ancienne version>-<date>/` (3 dernières sauvegardes conservées par stack) ;
+3. change `PRODUCT_VERSION` **par l'API Portainer** (la stack reste gérée normalement dans Portainer) ;
+4. attend que tous les services soient à jour (15 min max, option `-t`) et que la page de connexion de l'administration
+   réponde (option `--no-http` pour ne pas la tester).
+
+En cas d'échec, il affiche la commande de retour arrière, à lancer **à la main** car elle efface les données écrites depuis la mise à jour :
+
+```bash
+up-update.sh -s hotspotmanager --rollback /backups/pre-update/hotspotmanager-3.41.2-20261118-103000/
+```
+
+Elle arrête les services applicatifs, restaure la base et les volumes, puis remet l'ancienne version par l'API Portainer.
+
+En HA, lancer le script sur le **nœud principal** (celui qui porte la base). Journal : `/var/log/up-update.log`.
+
+**Configuration (une fois par serveur)** : créer une clé d'API dans Portainer (*My account → Access tokens*), puis :
+
+```bash
+apt-get install -y jq        # déjà présent sur les serveurs installés avec une ISO récente
+git -C /usr/local/bin/public pull
+install -m 600 /dev/null /root/.up-update.conf
+echo 'PORTAINER_API_KEY="ptr_xxxxxxxx"' >> /root/.up-update.conf
+```
+
+### Méthode manuelle
+
+Dans Portainer, ouvrir la stack → onglet *Editor*, modifier **`PRODUCT_VERSION`** puis **Update the stack**,
+après avoir sauvegardé la base (voir [Sauvegardes](#sauvegardes)).
 
 ### Version de la base de données
 
@@ -124,6 +159,7 @@ Autres outils de `up-tools/` :
 | `docker-volume-backup.sh -v VOLUME\|all -t DIR -d JOURS` | Sauvegarde d'un volume Docker (ex. `hotspotmanager_hm-data_vol01`). |
 | `docker-hm-restore.sh -d DUMP.sql.gz -v VOLUME.tar.gz -t VOLUME -c CONTENEUR -p MOT_DE_PASSE` | Restauration Hotspot Manager (base + données). |
 | `docker-host-infos.sh` | Inventaire de l'hôte (OS, Docker, services). |
+| `up-update.sh -s STACK -v VERSION` | Mise à jour d'un produit avec sauvegarde préalable (voir [Mettre à jour un produit](#mettre-à-jour-un-produit)). |
 | `portainer-update.sh [-f] [-i IMAGE]` | Met à jour Portainer vers la dernière image (reprend les options du conteneur, garde les données, revient à l'ancien conteneur si le nouveau ne démarre pas). |
 | `keepalived/keepalived.conf` | Exemple d'IP virtuelle partagée pour un cluster. |
 | `stacks/` | Stacks utilitaires (filebrowser, agent Zabbix, Traefik docker-compose). |
