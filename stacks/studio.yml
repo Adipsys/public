@@ -1,6 +1,8 @@
 # Adipsys STUDIO - stack unifiée (Traefik)
 # Prérequis : la stack "traefik" (stacks/traefik.yml) doit être déployée.
 # Mise à jour : modifier PRODUCT_VERSION dans la stack Portainer (la base suit la même version).
+# TLS : certificats de /root/ssl_certificates (traefik.yaml) par défaut ;
+#       ajouter TLS_RESOLVER=letsencrypt à la stack pour des certificats Let's Encrypt automatiques.
 version: '3.8'
 
 volumes:
@@ -55,6 +57,7 @@ services:
         - "traefik.http.routers.STUDIO-admin-https.rule=Host(`${STUDIO_NAME}`)"
         - "traefik.http.routers.STUDIO-admin-https.entrypoints=websecure"
         - "traefik.http.routers.STUDIO-admin-https.tls=true"
+        - "traefik.http.routers.STUDIO-admin-https.tls.certresolver=${TLS_RESOLVER:-}"
 
         - "traefik.http.services.STUDIO.loadbalancer.server.port=80"
         - "traefik.http.services.STUDIO.loadbalancer.server.scheme=http"

@@ -1,6 +1,8 @@
 # Adipsys DNS Protect - stack unifiée (Traefik)
 # Prérequis : la stack "traefik" (stacks/traefik.yml) doit être déployée.
 # Mise à jour : modifier PRODUCT_VERSION dans la stack Portainer.
+# TLS : certificats de /root/ssl_certificates (traefik.yaml) par défaut ;
+#       ajouter TLS_RESOLVER=letsencrypt à la stack pour des certificats Let's Encrypt automatiques.
 # La version de la base est fixe ; pour la changer, ajouter manuellement la variable DB_VERSION à la stack.
 version: '3.8'
 
@@ -70,6 +72,7 @@ services:
         - "traefik.http.routers.DNSP-admin-https.rule=Host(`${SERVER_NAME}`)"
         - "traefik.http.routers.DNSP-admin-https.entrypoints=websecure"
         - "traefik.http.routers.DNSP-admin-https.tls=true"
+        - "traefik.http.routers.DNSP-admin-https.tls.certresolver=${TLS_RESOLVER:-}"
 
         - "traefik.http.services.DNSP.loadbalancer.server.port=80"
         - "traefik.http.services.DNSP.loadbalancer.server.scheme=http"

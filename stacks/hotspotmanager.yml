@@ -1,6 +1,8 @@
 # Adipsys Hotspot Manager - stack unifiée (Traefik)
 # Prérequis : la stack "traefik" (stacks/traefik.yml) doit être déployée.
 # Mise à jour : modifier PRODUCT_VERSION dans la stack Portainer.
+# TLS : certificats de /root/ssl_certificates (traefik.yaml) par défaut ;
+#       ajouter TLS_RESOLVER=letsencrypt à la stack pour des certificats Let's Encrypt automatiques.
 # La version de la base est fixe ; pour la changer, ajouter manuellement la variable DB_VERSION à la stack.
 version: '3.8'
 
@@ -73,6 +75,7 @@ services:
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-https.rule=Host(`${HM_SERVER_NAME}-admin.${HM_URL_SUFFIX}`)"
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-https.entrypoints=websecure"
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-https.tls=true"
+        - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-https.tls.certresolver=${TLS_RESOLVER:-}"
 
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-adminpc-http.rule=Host(`${HM_SERVER_NAME}.${HM_URL_SUFFIX}`) || Host(`${HM_SERVER_NAME}-api.${HM_URL_SUFFIX}`)"
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-adminpc-http.entrypoints=web"
@@ -80,6 +83,7 @@ services:
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-adminpc-https.rule=Host(`${HM_SERVER_NAME}.${HM_URL_SUFFIX}`) || Host(`${HM_SERVER_NAME}-api.${HM_URL_SUFFIX}`)"
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-adminpc-https.entrypoints=websecure"
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-adminpc-https.tls=true"
+        - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-adminpc-https.tls.certresolver=${TLS_RESOLVER:-}"
 
         - "traefik.http.services.hm-${OPERATOR}-${HM_SERVER_NAME}.loadbalancer.server.port=80"
         - "traefik.http.services.hm-${OPERATOR}-${HM_SERVER_NAME}.loadbalancer.server.scheme=http"

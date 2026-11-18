@@ -38,8 +38,15 @@ Les serveurs installés avec l'ISO actuelle sont déjà configurés avec cette U
 
 ### Certificats TLS
 
-Traefik lit sa configuration dans `/root/traefik/traefik.yaml` et les certificats dans `/root/ssl_certificates/` (créés par l'ISO).
-Exemple de configuration : [`up-tools/traefik.yaml`](up-tools/traefik.yaml).
+Deux possibilités, au choix pour chaque stack :
+
+- **Certificat fourni** (par défaut) : déposer le certificat et la clé dans `/root/ssl_certificates/` (créé par l'ISO)
+  et les déclarer dans `/root/traefik/traefik.yaml`. Exemple : [`up-tools/traefik.yaml`](up-tools/traefik.yaml).
+- **Let's Encrypt automatique** : ajouter la variable **`TLS_RESOLVER=letsencrypt`** à la stack du produit puis *Update the stack*.
+  Traefik obtient et renouvelle seul les certificats des noms du produit.
+  Prérequis : les noms DNS pointent vers le serveur et le **port 80 est joignable depuis Internet** (validation HTTP).
+
+Les interfaces d'administration sont redirigées de HTTP vers HTTPS ; le portail captif et l'API restent accessibles en HTTP.
 
 ## Mettre à jour un produit
 
@@ -69,6 +76,7 @@ Ces variables ne sont pas dans les formulaires ; elles sont vides par défaut et
 | `RSYSLOG_ROTATE` | HM, HM HA, rSyslog | Rotation des logs rSyslog. |
 | `RADIUS_COMMAND` | HM, HM HA | Commande de démarrage de radius (debug : `freeradius -XXX`). |
 | `SERVER_ALIAS` | DNS Protect | URL secondaire de l'administration. |
+| `TLS_RESOLVER` | HM, HM HA, DNS Protect, STUDIO | `letsencrypt` pour des certificats automatiques (voir [Certificats TLS](#certificats-tls)). |
 | `TRAEFIK_VERSION` | Traefik | Tag de l'image Traefik (défaut `v3`). |
 
 ## Hotspot Manager HA
