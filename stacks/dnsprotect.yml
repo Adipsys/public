@@ -60,6 +60,13 @@ services:
         - "traefik.http.routers.DNSP-http.priority=1"
         - "traefik.http.routers.DNSP-http.entrypoints=web"
 
+        # Administration : HTTP redirigé vers HTTPS (prioritaire sur le catch-all).
+        - "traefik.http.routers.DNSP-admin-http.rule=Host(`${SERVER_NAME}`)"
+        - "traefik.http.routers.DNSP-admin-http.entrypoints=web"
+        - "traefik.http.routers.DNSP-admin-http.middlewares=DNSP-https-redirect@swarm"
+        - "traefik.http.middlewares.DNSP-https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.DNSP-https-redirect.redirectscheme.permanent=true"
+
         - "traefik.http.routers.DNSP-admin-https.rule=Host(`${SERVER_NAME}`)"
         - "traefik.http.routers.DNSP-admin-https.entrypoints=websecure"
         - "traefik.http.routers.DNSP-admin-https.tls=true"

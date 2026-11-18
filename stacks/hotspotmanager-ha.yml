@@ -135,6 +135,10 @@ services:
 
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-http.rule=Host(`${HM_SERVER_NAME}-admin.${HM_URL_SUFFIX}`)"
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-http.entrypoints=web"
+        # Administration : HTTP redirigé vers HTTPS (le portail et l'API restent en HTTP).
+        - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-http.middlewares=hm-${OPERATOR}-${HM_SERVER_NAME}-https-redirect@swarm"
+        - "traefik.http.middlewares.hm-${OPERATOR}-${HM_SERVER_NAME}-https-redirect.redirectscheme.scheme=https"
+        - "traefik.http.middlewares.hm-${OPERATOR}-${HM_SERVER_NAME}-https-redirect.redirectscheme.permanent=true"
 
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-https.rule=Host(`${HM_SERVER_NAME}-admin.${HM_URL_SUFFIX}`)"
         - "traefik.http.routers.hm-${OPERATOR}-${HM_SERVER_NAME}-admin-https.entrypoints=websecure"
