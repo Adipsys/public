@@ -1,6 +1,7 @@
 #!/bin/bash
 
-USAGE="Usage: -d DAYSTOPURGE -c CONTAINERNAME (or all) -p PASSWORD -t TARGETDIR"
+USAGE="Usage: -d DAYSTOPURGE -c CONTAINERNAME (or all) [-p PASSWORD] -t TARGETDIR
+  Without -p, the MYSQL_ROOT_PASSWORD variable of each DB container is used."
 
 while getopts "c:p:t:d:" option; do
     case "${option}" in
@@ -41,11 +42,15 @@ else
     fi
 fi
 
-if [ -z $PASSWORD ] ; then
-        echo "Missing mandatory PASSWORD parameter !"
-        echo $USAGE
-	exit 1
-fi
+# Without -p, use the root password defined in the container itself (MYSQL_ROOT_PASSWORD).
+dump()
+{
+    if [ -n "$PASSWORD" ]; then
+        docker exec "$1" /usr/bin/mysqldump -u root --password="$PASSWORD" --all-databases
+    else
+        docker exec "$1" sh -c 'exec /usr/bin/mysqldump -u root --password="$MYSQL_ROOT_PASSWORD" --all-databases'
+    fi
+}
 
 if [ -z $TARGETDIR ] ; then
         echo "Missing mandatory TARGETDIR parameter !"
@@ -62,7 +67,7 @@ backup_purge()
 {
     if [ $CONTAINERNAME == "all" ]; then
         if [[ $DAYSTOPURGE -gt 0 ]]; then
-            for container in $(docker ps --format "{{.Names}}"|grep -e hm-db -e dnsp-db); do
+            for container in $(docker ps --format "{{.Names}}"|grep -e hm-db -e dnsp-db -e studio-db); do
             strip=$(echo $container|cut -d "." -f1)
             echo "Cleaning $strip ..."
             find $TARGETDIR -name "docker_database_$strip-*.sql.gz" -mtime +$DAYSTOPURGE -exec rm {} \; >> $LOG
@@ -78,7 +83,7 @@ backup_purge()
 
 backup_database()
 {
-    docker exec $CONTAINERFULLNAME /usr/bin/mysqldump -u root --password=$PASSWORD --all-databases | gzip -9 > $TARGETDIR/docker_database_$CONTAINERNAME-$DATE.sql.gz
+    dump "$CONTAINERFULLNAME" | gzip -9 > $TARGETDIR/docker_database_$CONTAINERNAME-$DATE.sql.gz
 }
 
 backup_all_databases()
@@ -86,7 +91,7 @@ backup_all_databases()
     for container in $(docker ps --format "{{.Names}}"|grep -e hm-db -e dnsp-db -e studio-db); do
         strip=$(echo $container|cut -d "." -f1)
         echo "Backuping $strip ..."
-        docker exec $container /usr/bin/mysqldump -u root --password=$PASSWORD --all-databases | gzip -9 > $TARGETDIR/docker_database_$strip-$DATE.sql.gz
+        dump "$container" | gzip -9 > $TARGETDIR/docker_database_$strip-$DATE.sql.gz
     done
 }
 
