@@ -124,6 +124,7 @@ Autres outils de `up-tools/` :
 | `docker-volume-backup.sh -v VOLUME\|all -t DIR -d JOURS` | Sauvegarde d'un volume Docker (ex. `hotspotmanager_hm-data_vol01`). |
 | `docker-hm-restore.sh -d DUMP.sql.gz -v VOLUME.tar.gz -t VOLUME -c CONTENEUR -p MOT_DE_PASSE` | Restauration Hotspot Manager (base + données). |
 | `docker-host-infos.sh` | Inventaire de l'hôte (OS, Docker, services). |
+| `portainer-update.sh [-f] [-i IMAGE]` | Met à jour Portainer vers la dernière image (reprend les options du conteneur, garde les données, revient à l'ancien conteneur si le nouveau ne démarre pas). |
 | `keepalived/keepalived.conf` | Exemple d'IP virtuelle partagée pour un cluster. |
 | `stacks/` | Stacks utilitaires (filebrowser, agent Zabbix, Traefik docker-compose). |
 
