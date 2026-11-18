@@ -244,7 +244,7 @@ up-update -s hotspotmanager -v 3.41.3     # mise à jour
 
 Comme `up-setup`, `up-update` se met à jour seul à chaque lancement. La commande :
 
-1. vérifie que le produit fonctionne et qu'il reste au moins 1 Go libre, puis télécharge les images de la nouvelle version : une version qui n'existe pas est refusée avant toute coupure du service ;
+1. vérifie que la version demandée est plus récente que celle installée (la descente de version est refusée : elle passe par le support), que le produit fonctionne et qu'il reste au moins 1 Go libre, puis télécharge les images de la nouvelle version : une version qui n'existe pas est refusée avant toute coupure du service ;
 2. sauvegarde la base et les données dans `/backups/pre-update/` (3 dernières sauvegardes gardées par produit) ;
 3. change la version dans Portainer ;
 4. attend jusqu'à 15 minutes que tous les services aient redémarré, que le produit ait terminé son démarrage (migration de la base comprise) et que la page de connexion réponde ;

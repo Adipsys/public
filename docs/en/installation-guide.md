@@ -246,7 +246,7 @@ up-update -s hotspotmanager -v 3.41.3     # update
 
 Like `up-setup`, `up-update` updates itself each time it starts. The command:
 
-1. checks that the product is running and that at least 1 GB is free, then downloads the new version's images: a version that does not exist is refused before any service interruption;
+1. checks that the requested version is newer than the installed one (downgrades are refused: they go through support), that the product is running and that at least 1 GB is free, then downloads the new version's images: a version that does not exist is refused before any service interruption;
 2. backs up the database and data to `/backups/pre-update/` (last 3 backups kept per product);
 3. changes the version in Portainer;
 4. waits up to 15 minutes for all services to restart, for the product to finish starting (database migration included) and for the login page to respond;

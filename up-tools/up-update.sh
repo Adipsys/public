@@ -12,7 +12,7 @@
 #   --no-image-check  ne pas vérifier ni télécharger les images avant la mise à jour
 #
 # Étapes d'une mise à jour :
-#   1. vérifications (stack saine, place disque) et téléchargement des images de la nouvelle version
+#   1. vérifications (version plus récente que l'installée, stack saine, place disque) et téléchargement des images de la nouvelle version
 #      par Portainer (identifiants du registre) : une version inexistante est refusée avant toute coupure ;
 #   2. sauvegarde de la base (mysqldump) et des volumes de données dans /backups/pre-update/ ;
 #   3. changement de PRODUCT_VERSION par l'API Portainer (la stack reste gérée par Portainer) ;
@@ -472,6 +472,11 @@ do_update()
     current="$(stack_env_value "$stack" PRODUCT_VERSION)"
     [[ -n "$current" ]] || die "la stack n'a pas de variable PRODUCT_VERSION"
     [[ "$current" != "$VERSION" ]] || die "la stack est déjà en version ${VERSION}"
+    # Pas de descente de version : la base, déjà migrée, ne fonctionne pas avec une version plus ancienne.
+    # Revenir à une version précédente passe par la restauration d'une sauvegarde (support Adipsys).
+    if [[ "$(printf '%s\n%s\n' "$current" "$VERSION" | sort -V | head -n 1)" == "$VERSION" ]]; then
+        die "la version ${VERSION} est antérieure à la version installée ${current} : descente de version interdite. Pour revenir à une version précédente, contacter le support Adipsys (support@adipsys.com)."
+    fi
 
     state="$(stack_state)"
     [[ "$state" == "ok" ]] || die "la stack n'est pas saine avant la mise à jour (${state}) : corriger d'abord"
