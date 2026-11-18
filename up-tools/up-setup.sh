@@ -277,6 +277,24 @@ create_api_key()
     printf 'PORTAINER_API_KEY="%s"\n' "$API_KEY" > "$CONF_FILE"
 }
 
+# Création du compte administrateur ; en cas de refus, le code HTTP et la réponse vont dans le journal.
+admin_init()
+{
+    local body code
+    body="$(mktemp)"
+    code="$(curl --silent --insecure --noproxy '*' --output "$body" --write-out '%{http_code}' \
+        --request POST --header 'Content-Type: application/json' \
+        --data "$(jq -n --arg u "$1" --arg p "$2" '{Username: $u, Password: $p}')" \
+        "${PORTAINER_URL}/api/users/admin/init" || true)"
+    if [[ "$code" == "200" ]]; then
+        rm -f "$body"
+        return 0
+    fi
+    log "Portainer /users/admin/init : HTTP ${code} $(head -c 300 "$body" | tr '\n' ' ')"
+    rm -f "$body"
+    return 1
+}
+
 step_portainer()
 {
     local status user password
@@ -300,15 +318,17 @@ step_portainer()
         # Pas encore de compte administrateur : on le crée.
         user="admin"
         password="$(gen_password)"
-        if ! api POST /users/admin/init --header 'Content-Type: application/json' \
-                --data "$(jq -n --arg u "$user" --arg p "$password" '{Username: $u, Password: $p}')" > /dev/null; then
+        if ! admin_init "$user" "$password"; then
             # Portainer refuse la création après quelques minutes : on le redémarre.
             log "Création du compte refusée, redémarrage de Portainer"
             docker restart portainer > /dev/null
             wait_portainer
-            api POST /users/admin/init --header 'Content-Type: application/json' \
-                --data "$(jq -n --arg u "$user" --arg p "$password" '{Username: $u, Password: $p}')" > /dev/null \
-                || abort "impossible de créer le compte administrateur Portainer"
+            local i ok=0
+            for i in 1 2 3 4 5 6; do
+                if admin_init "$user" "$password"; then ok=1; break; fi
+                sleep 5
+            done
+            (( ok )) || abort "impossible de créer le compte administrateur Portainer (détail dans ${LOG_FILE})"
         fi
         save_secret PORTAINER_ADMIN_USER "$user"
         save_secret PORTAINER_ADMIN_PASSWORD "$password"
