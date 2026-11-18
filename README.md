@@ -47,9 +47,32 @@ Deux possibilités, qui aboutissent au même serveur :
   Il refuse un autre système que Debian 13 (option `--force`) et une installation Docker existante hors dépôt officiel.
   Il peut être relancé sans risque. Journal : `/var/log/up-bootstrap.log`.
 
-Portainer est ensuite disponible sur `https://<ip>:9443` : créer le compte administrateur sans attendre.
+## Installer les produits : assistant `up-setup` (recommandé)
 
-## Installer un produit
+Sur le serveur, en root :
+
+```bash
+up-setup
+```
+
+L'assistant (en mode texte, relançable à tout moment) :
+
+1. vérifie les ressources (CPU, RAM, disque) et les **accès Internet** nécessaires (licences, registre Adipsys,
+   Docker Hub, GitHub, Debian, NTP) et signale ce qui est bloqué ;
+2. **crée le compte administrateur Portainer** (mot de passe généré) et une clé d'API (utilisée aussi par `up-update.sh`) ;
+3. demande les **identifiants du registre Adipsys**, les vérifie et les enregistre dans Portainer ;
+4. installe **Traefik** ;
+5. installe les **produits choisis** : seules les informations utiles sont demandées (société, nom du serveur, domaine,
+   e-mail), les mots de passe sont générés, les **noms DNS sont vérifiés**, certificats Let's Encrypt en option ;
+6. affiche et enregistre un **récapitulatif** : adresses, ports à ouvrir pour les produits installés, étapes restantes
+   (licence, SMTP…).
+
+Fichiers créés (root uniquement) : `/root/up-secrets.env` (mots de passe), `/root/.up-update.conf` (clé d'API Portainer),
+`/root/up-install-report.txt` (récapitulatif). Journal : `/var/log/up-setup.log`.
+
+L'assistant déploie les mêmes stacks que les App Templates (définitions lues dans `portainer-templates/templates.json`).
+
+## Installer un produit depuis Portainer (méthode manuelle)
 
 1. **Installer d'abord le template `Traefik`.** Il crée le réseau `traefik_default` dont tous les produits ont besoin.
    Sans lui, le déploiement d'un produit échoue avec `network "traefik_default" is declared as external, but could not be found`.
@@ -179,6 +202,7 @@ Autres outils de `up-tools/` :
 | `docker-volume-backup.sh -v VOLUME\|all -t DIR -d JOURS` | Sauvegarde d'un volume Docker (ex. `hotspotmanager_hm-data_vol01`). |
 | `docker-hm-restore.sh -d DUMP.sql.gz -v VOLUME.tar.gz -t VOLUME -c CONTENEUR -p MOT_DE_PASSE` | Restauration Hotspot Manager (base + données). |
 | `docker-host-infos.sh` | Inventaire de l'hôte (OS, Docker, services). |
+| `up-setup.sh` (commande `up-setup`) | Assistant d'installation de la plateforme et des produits (voir plus haut). |
 | `up-update.sh -s STACK -v VERSION` | Mise à jour d'un produit avec sauvegarde préalable (voir [Mettre à jour un produit](#mettre-à-jour-un-produit)). |
 | `portainer-update.sh [-f] [-i IMAGE]` | Met à jour Portainer vers la dernière image (reprend les options du conteneur, garde les données, revient à l'ancien conteneur si le nouveau ne démarre pas). |
 | `keepalived/keepalived.conf` | Exemple d'IP virtuelle partagée pour un cluster. |

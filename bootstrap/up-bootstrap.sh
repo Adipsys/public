@@ -22,7 +22,7 @@ readonly SUPPORT_KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBlwigpsyXHTU9hV+puWgX
 readonly PUBLIC_REPO="https://github.com/Adipsys/public.git"
 readonly TEMPLATES_URL="https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/portainer-templates/templates.json"
 readonly PACKAGES="ca-certificates curl wget gnupg git jq sudo openssh-server openssh-client htop nmon vim zstd \
-net-tools rsync bash-completion smbclient cifs-utils unattended-upgrades open-vm-tools qemu-guest-agent"
+net-tools rsync bash-completion smbclient cifs-utils unattended-upgrades open-vm-tools qemu-guest-agent whiptail"
 
 FORCE=0
 for arg in "$@"; do
@@ -106,7 +106,10 @@ grep -q '^UP_INSTALL_DATE=' /etc/up-release \
     || echo "UP_INSTALL_DATE=\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"" >> /etc/up-release
 chmod 0644 /etc/up-release
 . /etc/up-release
-echo "Serveur UP - ${UP_ISO_VERSION:+ISO ${UP_ISO_VERSION} - }installé le ${UP_INSTALL_DATE%%T*} (détails : /etc/up-release)" > /etc/motd
+cat > /etc/motd << EOM
+Serveur UP - ${UP_ISO_VERSION:+ISO ${UP_ISO_VERSION} - }installé le ${UP_INSTALL_DATE%%T*} (détails : /etc/up-release)
+Installation des produits Adipsys : lancer « up-setup » (assistant).
+EOM
 
 # ------------------------------------------------------------------ Paquets et Docker
 if [ -f /etc/apt/sources.list ]; then
@@ -265,15 +268,17 @@ fi
 add_cron '0 0 * * * /usr/local/bin/public/up-tools/docker-engine-backup.sh -s "/var/lib/docker/swarm" -t "/backups/docker-engine/" -d 30'
 add_cron '5 0 * * * /usr/local/bin/public/up-tools/docker-volume-backup.sh -v "portainer_data" -t "/backups/docker-volumes/" -d 30'
 add_cron '15 0 * * * /usr/local/bin/public/up-tools/docker-db-backup.sh -c all -t "/backups/docker-db/" -d 30'
+ln -sf /usr/local/bin/public/up-tools/up-setup.sh /usr/local/sbin/up-setup
+ln -sf /usr/local/bin/public/up-tools/up-update.sh /usr/local/sbin/up-update
 
 # ------------------------------------------------------------------ Démarrage immédiat (hors ISO)
 if systemd_running; then
     echo "--- Création du Swarm et de Portainer (quelques minutes)"
     systemctl restart docker
     systemctl start up-firstboot.service
-    echo "Portainer : https://$(hostname -I | awk '{print $1}'):9443 (créer le compte administrateur sans attendre)"
+    echo "Serveur prêt. Lancer maintenant l'assistant d'installation des produits : up-setup"
 else
-    echo "Swarm et Portainer seront créés au premier démarrage (service up-firstboot)."
+    echo "Swarm et Portainer seront créés au premier démarrage (service up-firstboot), puis lancer « up-setup »."
 fi
 
 touch "$STATE_DIR/bootstrap.done"
