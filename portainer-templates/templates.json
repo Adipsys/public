@@ -55,14 +55,7 @@
           "name": "PRODUCT_VERSION",
           "label": "Release",
           "description": "Product version. Change it in the stack to update.",
-          "default": "3.42.1"
-        },
-        {
-          "name": "DB_VERSION",
-          "label": "Database release",
-          "description": "Database image version.",
-          "default": "3.40.0",
-          "preset": true
+          "default": "3.41.2"
         },
         {
           "name": "LICENCE_SERVER",
@@ -147,13 +140,6 @@
           "label": "Release",
           "description": "Product version. Change it in the stack to update.",
           "default": "3.0.0"
-        },
-        {
-          "name": "DB_VERSION",
-          "label": "Database release",
-          "description": "Database image version.",
-          "default": "2.3.0",
-          "preset": true
         },
         {
           "name": "LICENCE_SERVER",
@@ -272,7 +258,7 @@
         {
           "name": "PRODUCT_VERSION",
           "label": "Release",
-          "default": "3.42.1"
+          "default": "3.41.2"
         },
         {
           "name": "TZ",
@@ -314,14 +300,7 @@
           "name": "PRODUCT_VERSION",
           "label": "Release",
           "description": "Product version. Change it in the stack to update.",
-          "default": "3.42.1"
-        },
-        {
-          "name": "DB_VERSION",
-          "label": "Database release",
-          "description": "Database image version.",
-          "default": "3.40.0",
-          "preset": true
+          "default": "3.41.2"
         },
         {
           "name": "LICENCE_SERVER",

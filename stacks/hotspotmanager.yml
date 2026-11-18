@@ -1,6 +1,7 @@
 # Adipsys Hotspot Manager - stack unifiée (Traefik)
 # Prérequis : la stack "traefik" (stacks/traefik.yml) doit être déployée.
-# Mise à jour : modifier PRODUCT_VERSION (et DB_VERSION si besoin) dans la stack Portainer.
+# Mise à jour : modifier PRODUCT_VERSION dans la stack Portainer.
+# La version de la base est fixe ; pour la changer, ajouter manuellement la variable DB_VERSION à la stack.
 version: '3.8'
 
 volumes:
