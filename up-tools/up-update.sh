@@ -3,18 +3,25 @@
 #
 #   up-update.sh -l                                   liste les stacks et leur PRODUCT_VERSION
 #   up-update.sh -s STACK -v VERSION [options]        met à jour la stack
-#   up-update.sh -s STACK --rollback DOSSIER [-y]     restaure la sauvegarde et l'ancienne version
+#   up-update.sh -s STACK --rollback DOSSIER [-y]     restaure la sauvegarde et l'ancienne version (support Adipsys)
 #
 # Options :
 #   -t SECONDES   délai d'attente de la mise à jour (défaut 900)
 #   -y            pas de confirmation interactive
 #   --no-http     ne pas tester la page de connexion
+#   --no-image-check  ne pas vérifier ni télécharger les images avant la mise à jour
 #
 # Étapes d'une mise à jour :
-#   1. vérifications (stack saine, place disque) ;
+#   1. vérifications (stack saine, place disque) et téléchargement des images de la nouvelle version
+#      par Portainer (identifiants du registre) : une version inexistante est refusée avant toute coupure ;
 #   2. sauvegarde de la base (mysqldump) et des volumes de données dans /backups/pre-update/ ;
 #   3. changement de PRODUCT_VERSION par l'API Portainer (la stack reste gérée par Portainer) ;
-#   4. attente que tous les services soient à jour et que la page de connexion réponde.
+#   4. attente que tous les services soient à jour, que l'entrypoint ait fini (message de fin
+#      dans les logs, ex. hm-web) et que la page de connexion réponde ;
+#   5. contrôle des logs des services depuis la mise à jour (copiés dans DOSSIER/logs/) :
+#      migration de base commencée sans être terminée, lignes d'erreur.
+# Codes de sortie : 0 réussite, 2 échec, 3 réussite avec erreurs dans les logs. Dans les deux derniers cas,
+# l'outil renvoie vers le support Adipsys : le retour arrière efface des données, il n'est pas proposé.
 # Les migrations de base ne sont pas réversibles : en cas d'échec, le retour arrière restaure
 # la sauvegarde (il efface les données écrites depuis la mise à jour) et se lance à la main.
 #
@@ -36,6 +43,10 @@ readonly POLL="${UP_UPDATE_POLL:-10}"
 # Volumes non sauvegardés : la base (sauvegardée par mysqldump), les logs, les index Elasticsearch.
 readonly VOLUME_EXCLUDE="${UP_UPDATE_VOLUME_EXCLUDE:-db_vol|logs|dashboard}"
 readonly DB_SERVICE_PATTERN='_(hm-db-seed|hm-db|dnsp-db|studio-db)\.'
+# Lignes de log signalées après une mise à jour (expression régulière étendue, sans casse).
+readonly LOG_ERROR_PATTERN="${UP_UPDATE_LOG_ERRORS:-(^|[^[:alnum:]_])(error|fatal|exception|sqlstate|failed|failure)([^[:alnum:]_]|$)}"
+# Lignes à ne pas signaler (ex. bruit connu d'un produit) ; vide : aucune.
+readonly LOG_IGNORE_PATTERN="${UP_UPDATE_LOG_IGNORE:-}"
 
 STACK=""
 VERSION=""
@@ -43,11 +54,12 @@ ROLLBACK_DIR=""
 TIMEOUT=900
 ASSUME_YES=0
 HTTP_CHECK=1
+IMAGE_CHECK=1
 LIST=0
 
 usage()
 {
-    sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
     exit 1
 }
 
@@ -109,6 +121,73 @@ stack_env_value()
     jq -r --arg name "$2" '(.Env // [])[] | select(.name == $name) | .value' <<< "$1"
 }
 
+stack_file_content()
+{
+    local content
+    content="$(api GET "/stacks/$(jq -r '.Id' <<< "$1")/file" | jq -r '.StackFileContent')"
+    [[ -n "$content" && "$content" != "null" ]] || die "impossible de lire le fichier de la stack"
+    printf '%s\n' "$content"
+}
+
+# Images de la stack qui suivent PRODUCT_VERSION, résolues pour la version $2 (une par ligne).
+# Les variables ${NOM} et ${NOM:-défaut} sont remplacées par les valeurs de la stack.
+target_images()
+{
+    local stack="$1" version="$2" image name value
+
+    while read -r image; do
+        [[ -n "$image" ]] || continue
+        image="${image//\$\{PRODUCT_VERSION\}/$version}"
+        while [[ "$image" =~ \$\{([A-Za-z_][A-Za-z0-9_]*)(:-([^}]*))?\} ]]; do
+            name="${BASH_REMATCH[1]}"
+            value="$(stack_env_value "$stack" "$name")"
+            [[ -n "$value" ]] || value="${BASH_REMATCH[3]}"
+            image="${image/"${BASH_REMATCH[0]}"/$value}"
+        done
+        echo "$image"
+    done < <(stack_file_content "$stack" \
+        | sed -n "s/^[[:space:]]*image:[[:space:]]*[\"']\{0,1\}\([^\"']*\)[\"']\{0,1\}[[:space:]]*\$/\1/p" \
+        | grep -F '${PRODUCT_VERSION}' | sort -u || true)
+}
+
+# Télécharge par Portainer (qui fournit les identifiants du registre) les images de la version $2.
+# S'arrête avant toute modification si l'une d'elles n'existe pas ou n'est pas accessible.
+pull_images()
+{
+    local stack="$1" version="$2" endpoint_id registries images image repo tag host registry_id code body reason
+    local auth=()
+
+    endpoint_id="$(jq -r '.EndpointId' <<< "$stack")"
+    registries="$(api GET /registries 2>/dev/null || echo '[]')"
+    images="$(target_images "$stack" "$version")"
+    [[ -n "$images" ]] || { log "Aucune image ne dépend de PRODUCT_VERSION : vérification ignorée"; return 0; }
+
+    body="$(mktemp)"
+    while read -r image; do
+        repo="${image%:*}"; tag="${image##*:}"
+        host="${repo%%/*}"
+        registry_id="$(jq -r --arg h "$host" \
+            '[.[] | select((.URL // "" | sub("^https?://"; "") | sub("/.*$"; "")) == $h)] | first | .Id // empty' \
+            <<< "$registries")"
+        auth=()
+        if [[ -n "$registry_id" ]]; then
+            auth=(--header "X-Registry-Auth: $(printf '{"registryId":%s}' "$registry_id" | base64 | tr -d '\n')")
+        fi
+        log "Téléchargement de ${image} ..."
+        code="$(curl --silent --insecure --noproxy '*' --max-time 1800 \
+            --header "X-API-Key: ${PORTAINER_API_KEY}" ${auth[@]+"${auth[@]}"} \
+            --request POST --output "$body" --write-out '%{http_code}' \
+            "${PORTAINER_URL%/}/api/endpoints/${endpoint_id}/docker/images/create?fromImage=${repo}&tag=${tag}" || true)"
+        reason="$(jq -r 'select(.error? // .message?) | (.error // .message)' "$body" 2>/dev/null | tail -n 1 || true)"
+        if [[ "$code" != "200" || -n "$reason" ]]; then
+            rm -f "$body"
+            die "image ${image} indisponible (HTTP ${code:-?}${reason:+ : ${reason}}). Vérifier le numéro de version ${version} : la stack n'a pas été modifiée."
+        fi
+    done <<< "$images"
+    rm -f "$body"
+    log "Images de la version ${version} disponibles"
+}
+
 update_stack_version()
 {
     local stack="$1" new_version="$2"
@@ -116,8 +195,7 @@ update_stack_version()
 
     stack_id="$(jq -r '.Id' <<< "$stack")"
     endpoint_id="$(jq -r '.EndpointId' <<< "$stack")"
-    stack_file="$(api GET "/stacks/${stack_id}/file" | jq -r '.StackFileContent')"
-    [[ -n "$stack_file" && "$stack_file" != "null" ]] || die "impossible de lire le fichier de la stack"
+    stack_file="$(stack_file_content "$stack")"
 
     payload="$(jq -n \
         --arg file "$stack_file" \
@@ -154,6 +232,62 @@ data_volumes()
 {
     docker volume ls --filter "label=com.docker.stack.namespace=${STACK}" --format '{{.Name}}' \
         | grep -vE "$VOLUME_EXCLUDE" || true
+}
+
+# Logs d'un service depuis $2 (epoch), toutes instances confondues (y compris celles remplacées).
+service_logs()
+{
+    docker service logs --since "$2" --no-trunc --timestamps "$1" 2>&1 || true
+}
+
+# Message affiché par l'entrypoint d'un service quand son démarrage (migration comprise) est terminé.
+ready_marker()
+{
+    case "$1" in
+        hm-web) echo 'Admin interface is reachable' ;;
+    esac
+}
+
+# Services dont le message de fin d'entrypoint n'est pas encore apparu depuis $1 (epoch).
+pending_markers()
+{
+    local since="$1" service short marker
+
+    for service in $(stack_services); do
+        short="${service#"${STACK}_"}"
+        marker="$(ready_marker "$short")"
+        [[ -n "$marker" ]] || continue
+        service_logs "$service" "$since" | grep -qF "$marker" || echo "$short"
+    done
+}
+
+# Copie les logs de chaque service depuis $1 (epoch) dans $2/logs/ et les analyse.
+# Retourne 1 si un problème est trouvé (lignes affichées et journalisées).
+check_logs()
+{
+    local since="$1" dir="$2" service short file lines found=0
+
+    mkdir -p "${dir}/logs"
+    for service in $(stack_services); do
+        short="${service#"${STACK}_"}"
+        file="${dir}/logs/${short}.log"
+        service_logs "$service" "$since" > "$file"
+
+        if grep -qF 'There IS a database update to install' "$file" \
+            && ! grep -qF 'DB has been updated' "$file"; then
+            log "Logs ${short} : migration de base commencée mais pas terminée"
+            found=1
+        fi
+
+        lines="$(grep -iE "$LOG_ERROR_PATTERN" "$file" | { if [[ -n "$LOG_IGNORE_PATTERN" ]]; then grep -viE "$LOG_IGNORE_PATTERN"; else cat; fi; } || true)"
+        if [[ -n "$lines" ]]; then
+            log "Logs ${short} : $(wc -l <<< "$lines") ligne(s) d'erreur, dont :"
+            head -n 10 <<< "$lines" | sed 's/^/    /' | tee -a "$LOG_FILE"
+            found=1
+        fi
+    done
+    log "Logs des services depuis la mise à jour : ${dir}/logs/"
+    (( found == 0 ))
 }
 
 # Affiche "ok", "wait" ou "fail:<raison>" pour l'ensemble des services de la stack.
@@ -225,7 +359,7 @@ http_code()
 wait_for_stack()
 {
     local stack="$1" new_version="$2" since="$3"
-    local deadline state host code=""
+    local deadline state host code="" waiting=""
 
     deadline=$(( $(date +%s) + TIMEOUT ))
     host=""
@@ -240,6 +374,10 @@ wait_for_stack()
         case "$state" in
             fail:*) log "Échec : ${state#fail:}"; return 1 ;;
             ok)
+                waiting="$(pending_markers "$since" | paste -sd, -)"
+                if [[ -n "$waiting" ]]; then
+                    sleep "$POLL"; continue
+                fi
                 if [[ -z "$host" ]]; then
                     return 0
                 fi
@@ -252,7 +390,7 @@ wait_for_stack()
         esac
         sleep "$POLL"
     done
-    log "Délai dépassé (${TIMEOUT}s). Dernier état : ${state:-?}${host:+, page de connexion HTTP ${code:-?}}"
+    log "Délai dépassé (${TIMEOUT}s). Dernier état : ${state:-?}${waiting:+, démarrage non terminé (logs) : ${waiting}}${host:+, page de connexion HTTP ${code:-?}}"
     return 1
 }
 
@@ -340,6 +478,10 @@ do_update()
     needed=1048576   # 1 Go minimum
     (( free > needed )) || die "moins de 1 Go libre dans ${BACKUP_ROOT}"
 
+    if (( IMAGE_CHECK )); then
+        pull_images "$stack" "$VERSION"
+    fi
+
     log "Mise à jour ${current} → ${VERSION}"
     echo
     echo "  Stack     : ${STACK}"
@@ -361,17 +503,36 @@ do_update()
     update_stack_version "$stack" "$VERSION"
 
     if wait_for_stack "$stack" "$VERSION" "$since"; then
-        log "Mise à jour réussie : ${STACK} en version ${VERSION}"
-        purge_old_backups
-        return 0
+        if check_logs "$since" "$dir"; then
+            log "Mise à jour réussie : ${STACK} en version ${VERSION}"
+            purge_old_backups
+            return 0
+        fi
+        log "Mise à jour terminée en version ${VERSION}, mais avec des erreurs dans les logs."
+        contact_support "$dir"
+        exit 3
     fi
 
+    check_logs "$since" "$dir" || true
     log "La mise à jour n'a pas abouti. État des services :"
     docker stack ps "$STACK" --no-trunc --filter desired-state=running 2>&1 | tee -a "$LOG_FILE" || true
-    echo
-    echo "Pour revenir à la version ${current} (restaure la base et les volumes sauvegardés) :"
-    echo "  $0 -s ${STACK} --rollback ${dir}"
+    contact_support "$dir"
     exit 2
+}
+
+# Le retour arrière efface les données écrites depuis la mise à jour : il est décidé avec le support.
+contact_support()
+{
+    local dir="$1"
+
+    log "Contacter le support Adipsys : support@adipsys.com (sauvegarde et logs : ${dir})"
+    echo
+    echo "  Ne tentez pas de revenir à l'ancienne version vous-même : cela efface des données."
+    echo "  Écrivez à support@adipsys.com en indiquant :"
+    echo "    - le produit et les versions : ${STACK}, ${current:-?} → ${VERSION:-?}"
+    echo "    - le journal : ${LOG_FILE}"
+    echo "    - le dossier de sauvegarde et de logs : ${dir}"
+    echo "  La sauvegarde d'avant la mise à jour y est conservée."
 }
 
 do_rollback()
@@ -437,6 +598,7 @@ while (( $# )); do
         -t) TIMEOUT="${2:-}"; shift ;;
         -y) ASSUME_YES=1 ;;
         --no-http) HTTP_CHECK=0 ;;
+        --no-image-check) IMAGE_CHECK=0 ;;
         --rollback) ROLLBACK_DIR="${2:-}"; shift ;;
         -h|--help) usage ;;
         *) echo "Option inconnue : $1"; usage ;;

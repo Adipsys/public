@@ -244,16 +244,13 @@ up-update -s hotspotmanager -v 3.41.3     # mise à jour
 
 La commande :
 
-1. vérifie que le produit fonctionne et qu'il reste au moins 1 Go libre ;
+1. vérifie que le produit fonctionne et qu'il reste au moins 1 Go libre, puis télécharge les images de la nouvelle version : une version qui n'existe pas est refusée avant toute coupure du service ;
 2. sauvegarde la base et les données dans `/backups/pre-update/` (3 dernières sauvegardes gardées par produit) ;
 3. change la version dans Portainer ;
-4. attend jusqu'à 15 minutes que tous les services aient redémarré et que la page de connexion réponde.
+4. attend jusqu'à 15 minutes que tous les services aient redémarré, que le produit ait terminé son démarrage (migration de la base comprise) et que la page de connexion réponde ;
+5. contrôle les logs des services : une migration non terminée ou des lignes d'erreur sont signalées. Les logs sont copiés dans le dossier de sauvegarde (`logs/`).
 
-En cas d'échec, elle affiche la commande de retour arrière. Lancez-la seulement après avoir vérifié : elle efface les données écrites depuis la mise à jour.
-
-```bash
-up-update -s hotspotmanager --rollback /backups/pre-update/hotspotmanager-3.41.2-20261118-103000/
-```
+En cas d'échec, ou d'erreurs dans les logs, la commande affiche les éléments utiles et vous invite à contacter le support Adipsys ([support@adipsys.com](mailto:support@adipsys.com)) en indiquant le dossier de sauvegarde. Ne tentez pas de revenir vous-même à l'ancienne version : le retour arrière efface les données écrites depuis la mise à jour, il est réalisé avec le support.
 
 Sans `up-update`, la mise à jour se fait aussi dans Portainer : stack → *Editor* → variable `PRODUCT_VERSION` → *Update the stack*, après une sauvegarde de la base.
 
@@ -284,7 +281,7 @@ Le serveur sauvegarde chaque nuit son état et ses bases dans `/backups/`, avec 
 | 00:15 | Bases de données des produits | `/backups/docker-db/` |
 | À chaque `up-update` | Base et données du produit mis à jour | `/backups/pre-update/` |
 
-Restaurer après une mise à jour ratée : utilisez la commande `--rollback` de `up-update` (section [Mettre à jour](#mettre-à-jour)). Pour toute autre restauration, ou en cas de doute, contactez le support Adipsys ([support@adipsys.com](mailto:support@adipsys.com)) : une restauration efface les données plus récentes que la sauvegarde.
+Pour toute restauration, y compris après une mise à jour ratée, contactez le support Adipsys ([support@adipsys.com](mailto:support@adipsys.com)) : une restauration efface les données plus récentes que la sauvegarde.
 
 Le snapshot de la VM avant chaque intervention reste la protection la plus simple.
 

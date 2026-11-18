@@ -148,7 +148,7 @@ Le script :
 4. attend que tous les services soient à jour (15 min max, option `-t`) et que la page de connexion de l'administration
    réponde (option `--no-http` pour ne pas la tester).
 
-En cas d'échec, il affiche la commande de retour arrière, à lancer **à la main** car elle efface les données écrites depuis la mise à jour :
+En cas d'échec, ou d'erreurs dans les logs, il renvoie le client vers le support Adipsys, sans proposer le retour arrière. Le retour arrière, **réservé au support**, se lance à la main car il efface les données écrites depuis la mise à jour :
 
 ```bash
 up-update.sh -s hotspotmanager --rollback /backups/pre-update/hotspotmanager-3.41.2-20261118-103000/

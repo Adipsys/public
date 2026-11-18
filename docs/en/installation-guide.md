@@ -246,16 +246,13 @@ up-update -s hotspotmanager -v 3.41.3     # update
 
 The command:
 
-1. checks that the product is running and that at least 1 GB is free;
+1. checks that the product is running and that at least 1 GB is free, then downloads the new version's images: a version that does not exist is refused before any service interruption;
 2. backs up the database and data to `/backups/pre-update/` (last 3 backups kept per product);
 3. changes the version in Portainer;
-4. waits up to 15 minutes for all services to restart and the login page to respond.
+4. waits up to 15 minutes for all services to restart, for the product to finish starting (database migration included) and for the login page to respond;
+5. checks the service logs: an unfinished migration or error lines are reported. The logs are copied to the backup folder (`logs/`).
 
-If it fails, it shows the rollback command. Run it only after checking: it erases the data written since the update.
-
-```bash
-up-update -s hotspotmanager --rollback /backups/pre-update/hotspotmanager-3.41.2-20261118-103000/
-```
+If the update fails, or errors appear in the logs, the command shows the relevant details and asks you to contact Adipsys support ([support@adipsys.com](mailto:support@adipsys.com)), giving the backup folder. Do not try to return to the previous version yourself: rolling back erases the data written since the update, so it is done with support.
 
 Without `up-update`, the update can also be done in Portainer: stack → *Editor* → variable `PRODUCT_VERSION` → *Update the stack*, after backing up the database.
 
@@ -286,7 +283,7 @@ Every night the server backs up its state and databases to `/backups/`, with 30 
 | 00:15 | Product databases | `/backups/docker-db/` |
 | On each `up-update` | Database and data of the updated product | `/backups/pre-update/` |
 
-To restore after a failed update: use the `--rollback` command of `up-update` (see [Updates](#updates)). For any other restore, or if in doubt, contact Adipsys support ([support@adipsys.com](mailto:support@adipsys.com)): a restore erases data newer than the backup.
+For any restore, including after a failed update, contact Adipsys support ([support@adipsys.com](mailto:support@adipsys.com)): a restore erases data newer than the backup.
 
 A VM snapshot before each operation remains the simplest protection.
 
