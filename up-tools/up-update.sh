@@ -29,7 +29,10 @@
 #   PORTAINER_API_KEY="ptr_..."          Portainer → My account → Access tokens
 #   PORTAINER_URL="https://127.0.0.1:9443"   (optionnel)
 #
-# Dépendances : docker, curl, jq, gzip, tar.
+# Le script se met à jour au lancement (git pull du dépôt Adipsys/public dans lequel il se trouve) ;
+# UP_UPDATE_NO_SELF_UPDATE=1 désactive cette mise à jour.
+#
+# Dépendances : docker, curl, jq, gzip, tar, git.
 
 set -euo pipefail
 umask 077
@@ -589,6 +592,31 @@ do_rollback()
 }
 
 # ---------------------------------------------------------------- Main
+
+# Met à jour le dépôt des outils puis relance la nouvelle version du script, avec les mêmes arguments.
+self_update()
+{
+    local repo before after
+
+    [[ -z "${UP_UPDATE_UPDATED:-}" && -z "${UP_UPDATE_NO_SELF_UPDATE:-}" ]] || return 0
+    command -v git > /dev/null || return 0
+    repo="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+    [[ -d "${repo}/.git" ]] || return 0
+
+    before="$(git -C "$repo" rev-parse HEAD)"
+    if ! git -C "$repo" pull --ff-only --quiet 2>> "$LOG_FILE"; then
+        log "Avertissement : mise à jour des outils impossible (accès GitHub ou modifications locales), version locale ${before:0:7} utilisée"
+        return 0
+    fi
+    after="$(git -C "$repo" rev-parse HEAD)"
+    if [[ "$before" != "$after" ]]; then
+        log "Outils mis à jour : ${before:0:7} → ${after:0:7}, relance"
+        export UP_UPDATE_UPDATED=1
+        exec bash "$(readlink -f "$0")" "$@"
+    fi
+}
+
+self_update "$@"
 
 while (( $# )); do
     case "$1" in

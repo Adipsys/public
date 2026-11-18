@@ -242,7 +242,7 @@ up-update -l                              # produits installés et versions
 up-update -s hotspotmanager -v 3.41.3     # mise à jour
 ```
 
-La commande :
+Comme `up-setup`, `up-update` se met à jour seul à chaque lancement. La commande :
 
 1. vérifie que le produit fonctionne et qu'il reste au moins 1 Go libre, puis télécharge les images de la nouvelle version : une version qui n'existe pas est refusée avant toute coupure du service ;
 2. sauvegarde la base et les données dans `/backups/pre-update/` (3 dernières sauvegardes gardées par produit) ;
