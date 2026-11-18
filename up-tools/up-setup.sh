@@ -381,12 +381,34 @@ step_registry()
         return 0
     fi
 
-    while true; do
+    # Identifiants fournis par l'environnement (REGISTRY_USER / REGISTRY_PASSWORD) ou embarqués dans l'ISO
+    # (/etc/up/registry.env, root 600) : utilisés sans question s'ils sont acceptés par le registre.
+    # Ils ne doivent jamais être écrits dans ce dépôt public.
+    if [[ -z "${REGISTRY_PASSWORD:-}" && -r "${REGISTRY_ENV_FILE:-/etc/up/registry.env}" ]]; then
+        local UP_REGISTRY_USER="" UP_REGISTRY_PASSWORD=""
+        # shellcheck disable=SC1090
+        source "${REGISTRY_ENV_FILE:-/etc/up/registry.env}"
+        REGISTRY_USER="${REGISTRY_USER:-$UP_REGISTRY_USER}"
+        REGISTRY_PASSWORD="$UP_REGISTRY_PASSWORD"
+    fi
+    if [[ -n "${REGISTRY_USER:-}" && -n "${REGISTRY_PASSWORD:-}" ]]; then
+        code="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 \
+            --user "${REGISTRY_USER}:${REGISTRY_PASSWORD}" "https://${REGISTRY}/v2/" || true)"
+        if [[ "$code" == "200" ]]; then
+            user="$REGISTRY_USER"
+            password="$REGISTRY_PASSWORD"
+        else
+            log "Identifiants du registre de l'environnement refusés (HTTP ${code})"
+        fi
+    fi
+
+    while [[ -z "${password:-}" ]]; do
         user="$(ask_or_quit ask_input "Identifiant du registre ${REGISTRY}\n(fourni par Adipsys avec votre licence) :" "${REGISTRY_USER:-}")"
         password="$(ask_or_quit ask_secret "Mot de passe du registre ${REGISTRY} :")"
         code="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 15 \
             --user "${user}:${password}" "https://${REGISTRY}/v2/" || true)"
         [[ "$code" == "200" ]] && break
+        password=""
         ask_yesno "Identifiants refusés par ${REGISTRY} (code HTTP ${code}).\n\nRessaisir ?" 10 || abort "identifiants du registre invalides"
     done
 
