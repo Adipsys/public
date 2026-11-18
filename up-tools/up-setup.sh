@@ -278,11 +278,26 @@ create_api_key()
 }
 
 # Création du compte administrateur ; en cas de refus, le code HTTP et la réponse vont dans le journal.
+# Portainer récent : la création du compte exige le jeton affiché dans ses journaux au démarrage
+# (en-tête X-Setup-Token, ligne « setup_token=… »), nouveau à chaque démarrage : on lit les journaux
+# du démarrage en cours seulement. Vide sur les versions plus anciennes.
+setup_token()
+{
+    local since
+    since="$(docker inspect --format '{{.State.StartedAt}}' portainer 2>/dev/null || true)"
+    docker logs ${since:+--since "$since"} portainer 2>&1 \
+        | grep -ioE 'setup[ _-]?token[^A-Za-z0-9]{1,6}[A-Za-z0-9_-]{8,}' \
+        | tail -n 1 | grep -oE '[A-Za-z0-9_-]{8,}$' || true
+}
+
 admin_init()
 {
-    local body code
+    local body code token header=()
+    token="$(setup_token)"
+    [[ -n "$token" ]] && header=(--header "X-Setup-Token: ${token}")
     body="$(mktemp)"
     code="$(curl --silent --insecure --noproxy '*' --output "$body" --write-out '%{http_code}' \
+        ${header[@]+"${header[@]}"} \
         --request POST --header 'Content-Type: application/json' \
         --data "$(jq -n --arg u "$1" --arg p "$2" '{Username: $u, Password: $p}')" \
         "${PORTAINER_URL}/api/users/admin/init" || true)"
@@ -290,7 +305,7 @@ admin_init()
         rm -f "$body"
         return 0
     fi
-    log "Portainer /users/admin/init : HTTP ${code} $(head -c 300 "$body" | tr '\n' ' ')"
+    log "Portainer /users/admin/init : HTTP ${code} (jeton de setup $([[ -n "$token" ]] && echo trouvé || echo absent)) $(head -c 300 "$body" | tr '\n' ' ')"
     rm -f "$body"
     return 1
 }
