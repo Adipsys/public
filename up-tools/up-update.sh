@@ -92,7 +92,7 @@ api()
 {
     local method="$1" path="$2"
     shift 2
-    curl --fail --silent --show-error --insecure \
+    curl --fail --silent --show-error --insecure --noproxy '*' \
         --header "X-API-Key: ${PORTAINER_API_KEY}" \
         --request "$method" "$@" \
         "${PORTAINER_URL%/}/api${path}"
@@ -218,7 +218,7 @@ admin_host()
 
 http_code()
 {
-    curl --silent --insecure --output /dev/null --max-time 10 --write-out '%{http_code}' \
+    curl --silent --insecure --noproxy '*' --output /dev/null --max-time 10 --write-out '%{http_code}' \
         --resolve "$1:443:127.0.0.1" "https://$1/" || true
 }
 

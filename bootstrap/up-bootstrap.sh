@@ -10,7 +10,13 @@
 #     (Portainer et le Swarm sont alors créés immédiatement.)
 #
 # Options :
-#   --force   continuer même si le système n'est pas une Debian 13
+#   --force                     continuer même si le système n'est pas une Debian 13
+#   --proxy URL                 proxy HTTP(S) pour sortir sur Internet (ex. http://proxy.client.fr:3128) ; « none » le retire
+#   --no-proxy LISTE            destinations sans proxy, séparées par des virgules (localhost et 127.0.0.1 toujours ajoutés)
+#   --dockerhub-mirror URL      miroir interne de Docker Hub (ex. https://nexus.client.fr:8443)
+#   --adipsys-registry CHEMIN   registre interne qui réplique registry.adipsys.com (ex. harbor.client.fr/adipsys)
+# Sans --proxy, le proxy saisi dans l'installateur Debian (configuration apt) est repris.
+# Réglages conservés dans /etc/up/up.conf (une relance sans option les garde).
 #
 # Le script peut être relancé : les étapes déjà faites ne sont pas refaites.
 # Journal : /var/log/up-bootstrap.log. Arrêt à la première erreur, étape en échec dans
@@ -25,12 +31,18 @@ readonly PACKAGES="ca-certificates curl wget gnupg git jq sudo openssh-server op
 net-tools rsync bash-completion smbclient cifs-utils unattended-upgrades open-vm-tools qemu-guest-agent whiptail"
 
 FORCE=0
-for arg in "$@"; do
-    case "$arg" in
+OPT_PROXY=""; OPT_NO_PROXY=""; OPT_DOCKERHUB_MIRROR=""; OPT_ADIPSYS_REGISTRY=""
+while [ $# -gt 0 ]; do
+    case "$1" in
         --force) FORCE=1 ;;
-        -h|--help) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
-        *) echo "Option inconnue : $arg"; exit 1 ;;
+        --proxy) OPT_PROXY="${2:?URL du proxy manquante}"; shift ;;
+        --no-proxy) OPT_NO_PROXY="${2:?liste manquante}"; shift ;;
+        --dockerhub-mirror) OPT_DOCKERHUB_MIRROR="${2:?URL du miroir manquante}"; shift ;;
+        --adipsys-registry) OPT_ADIPSYS_REGISTRY="${2:?registre manquant}"; shift ;;
+        -h|--help) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        *) echo "Option inconnue : $1"; exit 1 ;;
     esac
+    shift
 done
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -111,6 +123,54 @@ Serveur UP - ${UP_ISO_VERSION:+ISO ${UP_ISO_VERSION} - }installé le ${UP_INSTAL
 Installation des produits Adipsys : lancer « up-setup » (assistant).
 EOM
 
+# ------------------------------------------------------------------ Proxy et miroirs internes
+# Réglages dans /etc/up/up.conf, lus aussi par up-firstboot, up-setup et up-update.
+readonly UP_CONF=/etc/up/up.conf
+install -d -m 0755 /etc/up
+UP_HTTP_PROXY=""; UP_NO_PROXY=""; UP_DOCKERHUB_MIRROR=""; UP_ADIPSYS_REGISTRY=""
+# shellcheck disable=SC1090
+FIRST_RUN=1
+if [ -f "$UP_CONF" ]; then . "$UP_CONF"; FIRST_RUN=0; fi
+if [ -n "$OPT_PROXY" ]; then UP_HTTP_PROXY="$OPT_PROXY"; fi
+if [ "$UP_HTTP_PROXY" = "none" ]; then UP_HTTP_PROXY=""; fi
+if [ -n "$OPT_NO_PROXY" ]; then UP_NO_PROXY="$OPT_NO_PROXY"; fi
+if [ -n "$OPT_DOCKERHUB_MIRROR" ]; then UP_DOCKERHUB_MIRROR="$OPT_DOCKERHUB_MIRROR"; fi
+if [ -n "$OPT_ADIPSYS_REGISTRY" ]; then UP_ADIPSYS_REGISTRY="$OPT_ADIPSYS_REGISTRY"; fi
+if [ -z "$UP_HTTP_PROXY" ] && [ -z "$OPT_PROXY" ] && [ "$FIRST_RUN" -eq 1 ]; then
+    # Premier passage : proxy saisi dans l'installateur Debian (« Mandataire HTTP »), qu'il écrit dans /etc/apt/apt.conf.
+    UP_HTTP_PROXY="$(sed -n 's/^Acquire::http::Proxy "\(.*\)";$/\1/p' /etc/apt/apt.conf 2>/dev/null | head -n 1)"
+    case "$UP_HTTP_PROXY" in DIRECT|false) UP_HTTP_PROXY="" ;; esac
+fi
+# localhost et 127.0.0.1 toujours sans proxy (API Portainer locale).
+UP_NO_PROXY="$(printf '%s' "localhost,127.0.0.1,${UP_NO_PROXY}" | tr ',' '\n' | sed '/^$/d' | awk '!seen[$0]++' | paste -sd, -)"
+
+{
+    echo "# Réglages réseau de la plateforme UP (up-bootstrap.sh). Relancer up-bootstrap.sh après modification."
+    echo "UP_HTTP_PROXY=\"${UP_HTTP_PROXY}\""
+    echo "UP_NO_PROXY=\"${UP_NO_PROXY}\""
+    echo "UP_DOCKERHUB_MIRROR=\"${UP_DOCKERHUB_MIRROR}\""
+    echo "UP_ADIPSYS_REGISTRY=\"${UP_ADIPSYS_REGISTRY}\""
+} > "$UP_CONF"
+chmod 0600 "$UP_CONF"
+
+if [ -f /etc/environment ]; then
+    sed -i '/^\(http\|https\|no\)_proxy=/Id' /etc/environment
+fi
+if [ -n "$UP_HTTP_PROXY" ]; then
+    echo "--- Proxy : ${UP_HTTP_PROXY} (sans proxy : ${UP_NO_PROXY})"
+    export http_proxy="$UP_HTTP_PROXY" https_proxy="$UP_HTTP_PROXY" no_proxy="$UP_NO_PROXY"
+    export HTTP_PROXY="$UP_HTTP_PROXY" HTTPS_PROXY="$UP_HTTP_PROXY" NO_PROXY="$UP_NO_PROXY"
+    printf 'Acquire::http::Proxy "%s";\nAcquire::https::Proxy "%s";\n' "$UP_HTTP_PROXY" "$UP_HTTP_PROXY" \
+        > /etc/apt/apt.conf.d/95up-proxy
+    printf 'http_proxy=%s\nhttps_proxy=%s\nno_proxy=%s\nHTTP_PROXY=%s\nHTTPS_PROXY=%s\nNO_PROXY=%s\n' \
+        "$UP_HTTP_PROXY" "$UP_HTTP_PROXY" "$UP_NO_PROXY" "$UP_HTTP_PROXY" "$UP_HTTP_PROXY" "$UP_NO_PROXY" \
+        >> /etc/environment
+else
+    rm -f /etc/apt/apt.conf.d/95up-proxy
+fi
+if [ -n "$UP_DOCKERHUB_MIRROR" ]; then echo "--- Miroir Docker Hub : ${UP_DOCKERHUB_MIRROR}"; fi
+if [ -n "$UP_ADIPSYS_REGISTRY" ]; then echo "--- Registre Adipsys interne : ${UP_ADIPSYS_REGISTRY}"; fi
+
 # ------------------------------------------------------------------ Paquets et Docker
 if [ -f /etc/apt/sources.list ]; then
     sed -i '/^deb cdrom/d' /etc/apt/sources.list
@@ -120,18 +180,25 @@ echo "--- Paquets de base"
 retry apt-get update
 # shellcheck disable=SC2086
 retry apt-get install -y $PACKAGES
+if [ -n "$UP_HTTP_PROXY" ]; then
+    git config --system http.proxy "$UP_HTTP_PROXY"
+else
+    git config --system --unset http.proxy 2>/dev/null || true
+fi
 
 echo "--- Docker"
 # Configuration écrite avant l'installation : Docker démarre directement avec les bons réseaux.
 mkdir -p /etc/docker
-cat > /etc/docker/daemon.json << 'EOF'
-{
-  "log-driver": "json-file",
-  "log-opts": {"max-size": "2G", "max-file": "3"},
-  "bip": "10.100.0.1/24",
-  "default-address-pools": [{ "base": "10.101.0.0/16","size": 24 }]
-}
-EOF
+jq -n --arg proxy "$UP_HTTP_PROXY" --arg noproxy "$UP_NO_PROXY" --arg mirror "$UP_DOCKERHUB_MIRROR" '
+    {
+        "log-driver": "json-file",
+        "log-opts": {"max-size": "2G", "max-file": "3"},
+        "bip": "10.100.0.1/24",
+        "default-address-pools": [{"base": "10.101.0.0/16", "size": 24}]
+    }
+    + (if $proxy != "" then {"proxies": {"http-proxy": $proxy, "https-proxy": $proxy, "no-proxy": $noproxy}} else {} end)
+    + (if $mirror != "" then {"registry-mirrors": [$mirror]} else {} end)
+' > /etc/docker/daemon.json
 install -m 0755 -d /etc/apt/keyrings
 retry curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
 chmod a+r /etc/apt/keyrings/docker.asc
@@ -187,6 +254,21 @@ TEMPLATES_URL="${TEMPLATES_URL}"
 EOF
 cat >> /usr/local/sbin/up-firstboot.sh << 'EOF'
 
+# Proxy et miroirs (up-bootstrap.sh --proxy / --dockerhub-mirror).
+UP_HTTP_PROXY=""; UP_NO_PROXY=""; UP_DOCKERHUB_MIRROR=""
+if [ -f /etc/up/up.conf ]; then . /etc/up/up.conf; fi
+
+# Docker Hub joignable ? Directement (DNS), ou par le proxy / le miroir interne.
+registry_reachable()
+{
+    if [ -n "$UP_HTTP_PROXY" ] || [ -n "$UP_DOCKERHUB_MIRROR" ]; then
+        [ "$(curl --silent --output /dev/null --max-time 10 --write-out '%{http_code}' \
+            ${UP_HTTP_PROXY:+--proxy "$UP_HTTP_PROXY"} "${UP_DOCKERHUB_MIRROR:-https://registry-1.docker.io}/v2/")" != "000" ]
+    else
+        getent hosts registry-1.docker.io > /dev/null
+    fi
+}
+
 # Le réseau peut être déclaré prêt avant l'obtention du bail DHCP (interface en allow-hotplug) :
 # on attend une route par défaut puis la résolution DNS du registre Docker (10 minutes maximum).
 wait_network()
@@ -194,13 +276,13 @@ wait_network()
     local i
     for i in $(seq 1 60); do
         if { ip -4 route show default; ip -6 route show default; } 2>/dev/null | grep -q . \
-            && getent hosts registry-1.docker.io > /dev/null; then
+            && registry_reachable; then
             return 0
         fi
         echo "Attente du réseau et du DNS ($i/60)..."
         sleep 10
     done
-    echo "Réseau ou DNS indisponible : registry-1.docker.io ne répond pas."
+    echo "Réseau indisponible : Docker Hub ne répond pas${UP_HTTP_PROXY:+ (proxy $UP_HTTP_PROXY)}${UP_DOCKERHUB_MIRROR:+ (miroir $UP_DOCKERHUB_MIRROR)}."
     return 1
 }
 
@@ -222,12 +304,15 @@ if ! docker container inspect portainer > /dev/null 2>&1; then
         echo "Échec du téléchargement de Portainer, nouvel essai dans 30 s..."
         sleep 30
     done
+    PROXY_ENV=()
+    if [ -n "$UP_HTTP_PROXY" ]; then
+        PROXY_ENV=(-e "HTTP_PROXY=$UP_HTTP_PROXY" -e "HTTPS_PROXY=$UP_HTTP_PROXY" -e "NO_PROXY=$UP_NO_PROXY")
+    fi
     docker run -d -p 8000:8000 -p 9443:9443 --name=portainer --restart=always \
         -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data \
-        "$PORTAINER_IMAGE" \
+        "${PROXY_ENV[@]}" "$PORTAINER_IMAGE" \
         --logo https://www.adipsys.com/wp-content/uploads/2020/07/UP-Logo.png \
         --templates "$TEMPLATES_URL"
-    # Derrière un proxy : ajouter -e HTTP_PROXY=... -e HTTPS_PROXY=... à la commande ci-dessus.
 fi
 
 touch /var/lib/up/firstboot.done

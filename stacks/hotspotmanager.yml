@@ -54,6 +54,9 @@ services:
       - RSYSLOG_SERVER=${RSYSLOG_SERVER:-}
       - REMEDIATION=yes
       - SYMFONY_VERSION=1.5.15
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
     deploy:
       placement:
         max_replicas_per_node: 1

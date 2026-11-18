@@ -43,6 +43,9 @@ services:
       - STUDIO_NAME=${STUDIO_NAME}
       - OPERATOR_SUPPORT_EMAIL=${OPERATOR_SUPPORT_EMAIL}
       - ADMIN_PASSWD=${ADMIN_PASSWD}
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
     deploy:
       placement:
         constraints:

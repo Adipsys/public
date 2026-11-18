@@ -47,6 +47,29 @@ Deux possibilités, qui aboutissent au même serveur :
   Il refuse un autre système que Debian 13 (option `--force`) et une installation Docker existante hors dépôt officiel.
   Il peut être relancé sans risque. Journal : `/var/log/up-bootstrap.log`.
 
+### Réseau sans accès direct à Internet (proxy, miroirs internes)
+
+La licence impose un accès au serveur de licences ; il peut passer par un **proxy**. Les téléchargements peuvent
+aussi passer par des **miroirs internes** du client :
+
+```bash
+sudo bash up-bootstrap.sh --proxy http://proxy.client.fr:3128 \
+    --no-proxy "intra.client.fr,10.0.0.0/8" \
+    --dockerhub-mirror https://nexus.client.fr:8443 \
+    --adipsys-registry harbor.client.fr/adipsys
+```
+
+| Option | Effet |
+|---|---|
+| `--proxy URL` | Proxy pour apt, git, curl, Docker (téléchargement des images), Portainer et les produits (licences, API externes). `none` le retire. Avec l'ISO, le proxy saisi dans l'installateur Debian (« Mandataire HTTP ») est repris automatiquement. |
+| `--no-proxy LISTE` | Destinations jointes sans proxy (`localhost` et `127.0.0.1` toujours inclus ; les noms des services internes sont ajoutés aux stacks). |
+| `--dockerhub-mirror URL` | Miroir interne de Docker Hub (Portainer, Traefik, memcached…). |
+| `--adipsys-registry CHEMIN` | Registre interne qui réplique `registry.adipsys.com` (ex. projet proxy-cache Harbor) : utilisé par `up-setup` pour les images des produits. |
+
+Les réglages sont enregistrés dans `/etc/up/up.conf` (relancer `up-bootstrap.sh` pour les modifier) et repris par
+`up-firstboot`, `up-setup` et `up-update.sh`. Flux à autoriser sur le proxy : voir la documentation pare-feu
+(licences, registre Adipsys, Docker Hub, GitHub, Debian).
+
 ## Installer les produits : assistant `up-setup` (recommandé)
 
 Sur le serveur, en root :

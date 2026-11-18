@@ -91,6 +91,9 @@ services:
       - LICENCE_SERVER=${LICENCE_SERVER:-licences.adipsys.com}
       - RSYSLOG_SERVER=${RSYSLOG_SERVER:-}
       - SYMFONY_VERSION=1.5.15
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
     deploy:
       replicas: 1
       placement:
@@ -124,6 +127,9 @@ services:
       - REMEDIATION=yes
       - HA=1
       - SYMFONY_VERSION=1.5.15
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
     deploy:
       replicas: 1
       placement:
@@ -187,6 +193,9 @@ services:
       - RSYSLOG_SERVER=${RSYSLOG_SERVER:-}
       - SYMFONY_VERSION=1.5.15
       - REPLICA=1
+      - HTTP_PROXY=${HTTP_PROXY:-}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
     deploy:
       replicas: 2
       placement:

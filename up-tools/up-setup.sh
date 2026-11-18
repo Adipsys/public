@@ -33,7 +33,18 @@ readonly SECRETS_FILE="${UP_SECRETS_FILE:-/root/up-secrets.env}"
 readonly REPORT_FILE="${UP_REPORT_FILE:-/root/up-install-report.txt}"
 readonly LOG_FILE="${UP_SETUP_LOG:-/var/log/up-setup.log}"
 readonly PORTAINER_URL="${PORTAINER_URL:-https://127.0.0.1:9443}"
-readonly REGISTRY="registry.adipsys.com"
+
+# Proxy et miroirs internes (up-bootstrap.sh --proxy / --dockerhub-mirror / --adipsys-registry).
+UP_HTTP_PROXY=""; UP_NO_PROXY="localhost,127.0.0.1"; UP_DOCKERHUB_MIRROR=""; UP_ADIPSYS_REGISTRY=""
+# shellcheck disable=SC1090
+if [[ -f "${UP_NETWORK_CONF:-/etc/up/up.conf}" ]]; then source "${UP_NETWORK_CONF:-/etc/up/up.conf}"; fi
+if [[ -n "$UP_HTTP_PROXY" ]]; then
+    export http_proxy="$UP_HTTP_PROXY" https_proxy="$UP_HTTP_PROXY" no_proxy="$UP_NO_PROXY"
+    export HTTP_PROXY="$UP_HTTP_PROXY" HTTPS_PROXY="$UP_HTTP_PROXY" NO_PROXY="$UP_NO_PROXY"
+fi
+# Registre des images Adipsys : public, ou registre interne du client qui le réplique.
+readonly ADIPSYS_IMAGES="${UP_ADIPSYS_REGISTRY:-registry.adipsys.com}"
+readonly REGISTRY="${ADIPSYS_IMAGES%%/*}"
 readonly TITLE="Adipsys UP! - Assistant d'installation"
 readonly WAIT_TIMEOUT="${UP_SETUP_TIMEOUT:-1200}"
 readonly POLL="${UP_SETUP_POLL:-10}"
@@ -100,13 +111,13 @@ api()
     shift 2
     local auth=()
     [[ -n "$API_KEY" ]] && auth=(--header "X-API-Key: ${API_KEY}")
-    curl --fail --silent --show-error --insecure ${auth[@]+"${auth[@]}"} \
+    curl --fail --silent --show-error --insecure --noproxy '*' ${auth[@]+"${auth[@]}"} \
         --request "$method" "$@" "${PORTAINER_URL}/api${path}"
 }
 
 api_status()
 {
-    curl --silent --insecure --output /dev/null --write-out '%{http_code}' \
+    curl --silent --insecure --noproxy '*' --output /dev/null --write-out '%{http_code}' \
         --request "$1" "${PORTAINER_URL}/api$2" || true
 }
 
@@ -199,11 +210,11 @@ step_checks()
     fi
     (( disk_gb >= 95 )) || out+="  ⚠ Moins de 100 Go de disque.\n"
 
-    out+="\nAccès Internet depuis le serveur :\n"
+    out+="\nAccès Internet depuis le serveur${UP_HTTP_PROXY:+ (par le proxy ${UP_HTTP_PROXY})} :\n"
     for target in \
         "Licences|https://licences.adipsys.com" \
-        "Registre Adipsys|https://${REGISTRY}/v2/" \
-        "Docker Hub|https://registry-1.docker.io/v2/" \
+        "Registre Adipsys (${REGISTRY})|https://${REGISTRY}/v2/" \
+        "Docker Hub${UP_DOCKERHUB_MIRROR:+ (miroir)}|${UP_DOCKERHUB_MIRROR:-https://registry-1.docker.io}/v2/" \
         "GitHub (templates, outils)|https://raw.githubusercontent.com" \
         "Mises à jour Debian|https://deb.debian.org"; do
         name="${target%%|*}"; url="${target#*|}"
@@ -254,9 +265,9 @@ create_api_key()
     jwt="$(api POST /auth --header 'Content-Type: application/json' \
         --data "$(jq -n --arg u "$user" --arg p "$password" '{username: $u, password: $p}')" | jq -r '.jwt')" \
         || return 1
-    user_id="$(curl --fail --silent --insecure --header "Authorization: Bearer ${jwt}" \
+    user_id="$(curl --fail --silent --insecure --noproxy '*' --header "Authorization: Bearer ${jwt}" \
         "${PORTAINER_URL}/api/users/me" | jq -r '.Id' || echo 1)"
-    key="$(curl --fail --silent --insecure --header "Authorization: Bearer ${jwt}" \
+    key="$(curl --fail --silent --insecure --noproxy '*' --header "Authorization: Bearer ${jwt}" \
         --header 'Content-Type: application/json' --request POST \
         --data "$(jq -n --arg p "$password" '{description: "up-setup / up-update", password: $p}')" \
         "${PORTAINER_URL}/api/users/${user_id}/tokens" | jq -r '.rawAPIKey')"
@@ -276,7 +287,7 @@ step_portainer()
         # shellcheck disable=SC1090
         source "$CONF_FILE"
         API_KEY="${PORTAINER_API_KEY:-}"
-        if [[ -n "$API_KEY" && "$(curl --silent --insecure --output /dev/null --write-out '%{http_code}' \
+        if [[ -n "$API_KEY" && "$(curl --silent --insecure --noproxy '*' --output /dev/null --write-out '%{http_code}' \
                 --header "X-API-Key: ${API_KEY}" "${PORTAINER_URL}/api/users/me" || true)" == "200" ]]; then
             log "Clé d'API existante utilisée"
             return 0
@@ -388,6 +399,18 @@ wait_stack()
     return 1
 }
 
+# Ajoute HTTP_PROXY / HTTPS_PROXY / NO_PROXY à une liste de variables si un proxy est configuré.
+# NO_PROXY reçoit aussi les noms des services de la stack (échanges internes sans proxy).
+with_proxy_env()
+{
+    local env_json="$1" file="$2" services no_proxy
+    [[ -n "$UP_HTTP_PROXY" ]] || { printf '%s' "$env_json"; return 0; }
+    services="$(awk '/^services:/ {s = 1; next} s && /^  [a-z0-9-]+:$/ {gsub(/[ :]/, ""); print}' "${REPO_DIR}/${file}" | paste -sd, -)"
+    no_proxy="${UP_NO_PROXY}${services:+,${services}}"
+    jq --arg p "$UP_HTTP_PROXY" --arg n "$no_proxy" \
+        '. + [{name: "HTTP_PROXY", value: $p}, {name: "HTTPS_PROXY", value: $p}, {name: "NO_PROXY", value: $n}]' <<< "$env_json"
+}
+
 # ---------------------------------------------------------------- 4. Traefik
 
 step_traefik()
@@ -399,6 +422,7 @@ step_traefik()
     fi
     tpl="$(template_json traefik)"
     env_json="$(jq '[.env[]? | {name: .name, value: (.default // "")}]' <<< "$tpl")"
+    env_json="$(with_proxy_env "$env_json" "$(stack_file_of "$tpl")")"
     echo "Déploiement de Traefik..."
     deploy_stack traefik "$(stack_file_of "$tpl")" "$env_json"
     wait_stack traefik || abort "Traefik ne démarre pas (voir Portainer → Stacks → traefik)"
@@ -437,7 +461,9 @@ configure_product()
 
     while IFS=$'\t' read -r field label default preset; do
         [[ "$default" == "null" ]] && default=""
-        if [[ "$preset" == "true" ]]; then
+        if [[ "$field" == "PRODUCT_SOURCE" ]]; then
+            value="${default/registry.adipsys.com/$ADIPSYS_IMAGES}"
+        elif [[ "$preset" == "true" ]]; then
             value="$default"
         elif is_secret_field "$field"; then
             value="$(gen_password)"
@@ -476,6 +502,7 @@ install_product()
     fi
 
     env_json="$(configure_product "$name" "$tpl")"
+    env_json="$(with_proxy_env "$env_json" "$(stack_file_of "$tpl")")"
 
     hosts="$(product_hostnames "$env_json")"
     if [[ -n "$hosts" ]]; then
@@ -529,6 +556,9 @@ step_summary()
     {
         echo "Adipsys UP! - récapitulatif d'installation ($(date '+%d/%m/%Y %H:%M'))"
         echo "Serveur : $(hostname) - IP $(primary_ip)"
+        [[ -n "$UP_HTTP_PROXY" ]] && echo "Proxy : ${UP_HTTP_PROXY} (sans proxy : ${UP_NO_PROXY})"
+        [[ -n "$UP_DOCKERHUB_MIRROR" ]] && echo "Miroir Docker Hub : ${UP_DOCKERHUB_MIRROR}"
+        [[ -n "$UP_ADIPSYS_REGISTRY" ]] && echo "Registre Adipsys interne : ${UP_ADIPSYS_REGISTRY}"
         [[ -f /etc/up-release ]] && grep -E '^UP_(ISO_VERSION|INSTALL_DATE)=' /etc/up-release
         echo
         printf '%s\n' ${REPORT_LINES[@]+"${REPORT_LINES[@]}"}
