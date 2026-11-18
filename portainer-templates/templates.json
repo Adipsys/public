@@ -309,17 +309,6 @@
           "preset": true
         },
         {
-          "name": "HA_PRIMARY_NODE",
-          "label": "Primary node hostname*",
-          "description": "Hostname of the primary node (see docker node ls). It runs the DB seed, the admin web and rsyslog."
-        },
-        {
-          "name": "HA_DB_REPLICAS",
-          "label": "Galera secondary nodes",
-          "description": "Keep 1 for the initial bootstrap (seed + 1 node). Once the cluster is synced, set it to 2 in the stack and update it to add the 3rd node.",
-          "default": "1"
-        },
-        {
           "name": "OPERATOR",
           "label": "Operator*",
           "description": "Your company name (no spaces nor special characters)."
@@ -366,19 +355,15 @@
           "default": "514"
         },
         {
-          "name": "HOTSPOT_ALIAS1",
-          "label": "Hotspot URL alias",
-          "description": "If you need a secondary URL for your Hotspot."
+          "name": "HA_PRIMARY_NODE",
+          "label": "Primary node hostname*",
+          "description": "Hostname of the primary node (see docker node ls). It runs the DB seed, the admin web and rsyslog."
         },
         {
-          "name": "ADMIN_ALIAS1",
-          "label": "Admin URL alias",
-          "description": "If you need a secondary URL for your Admin interface."
-        },
-        {
-          "name": "RSYSLOG_SERVER",
-          "label": "Loghost",
-          "description": "If you need to send logs to another server (i.e. LOGview)."
+          "name": "HA_DB_REPLICAS",
+          "label": "Galera secondary nodes",
+          "description": "Keep 1 for the initial bootstrap (seed + 1 node). Once the cluster is synced, set it to 2 in the stack and update it to add the 3rd node.",
+          "default": "1"
         }
       ]
     }
