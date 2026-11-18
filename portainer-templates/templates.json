@@ -55,7 +55,7 @@
           "name": "PRODUCT_VERSION",
           "label": "Release",
           "description": "Product version. Change it in the stack to update.",
-          "default": "3.41.2"
+          "default": "3.42.2"
         },
         {
           "name": "LICENCE_SERVER",
@@ -258,7 +258,7 @@
         {
           "name": "PRODUCT_VERSION",
           "label": "Release",
-          "default": "3.41.2"
+          "default": "3.42.2"
         },
         {
           "name": "TZ",
@@ -300,7 +300,7 @@
           "name": "PRODUCT_VERSION",
           "label": "Release",
           "description": "Product version. Change it in the stack to update.",
-          "default": "3.41.2"
+          "default": "3.42.2"
         },
         {
           "name": "LICENCE_SERVER",
