@@ -19,6 +19,7 @@ Ce dépôt contient tout ce que les serveurs **UP** (installés depuis l'ISO Adi
 | `stacks/dnsprotect.yml` | DNS Protect. |
 | `stacks/studio.yml` | STUDIO. |
 | `stacks/rsyslog.yml` | rSyslog autonome. |
+| `bootstrap/up-bootstrap.sh` | Préparation d'un serveur UP (Docker, Swarm, Portainer, outils, sauvegardes), utilisée par l'ISO et sur une Debian 13 existante. |
 | `up-tools/` | Scripts d'exploitation clonés sur chaque serveur dans `/usr/local/bin/public/up-tools/`. |
 
 URL des templates à renseigner dans Portainer (*Settings → App Templates*) :
@@ -28,6 +29,25 @@ https://raw.githubusercontent.com/Adipsys/public/refs/heads/main/portainer-templ
 ```
 
 Les serveurs installés avec l'ISO actuelle sont déjà configurés avec cette URL.
+
+## Préparer un serveur UP
+
+Deux possibilités, qui aboutissent au même serveur :
+
+- **ISO Adipsys** (dépôt `simple-cdd`) : installation complète de Debian puis de la plateforme.
+- **Debian 13 déjà installée** (serveur du client, VM cloud…), sans environnement graphique, avec accès à Internet :
+
+  ```bash
+  curl -fsSL https://raw.githubusercontent.com/Adipsys/public/main/bootstrap/up-bootstrap.sh -o up-bootstrap.sh
+  sudo bash up-bootstrap.sh
+  ```
+
+  Le script installe les paquets de base et Docker (dépôt officiel), configure les réseaux Docker, les mises à jour
+  de sécurité automatiques, l'accès du support, les outils `up-tools` et les sauvegardes, puis crée le Swarm et Portainer.
+  Il refuse un autre système que Debian 13 (option `--force`) et une installation Docker existante hors dépôt officiel.
+  Il peut être relancé sans risque. Journal : `/var/log/up-bootstrap.log`.
+
+Portainer est ensuite disponible sur `https://<ip>:9443` : créer le compte administrateur sans attendre.
 
 ## Installer un produit
 
