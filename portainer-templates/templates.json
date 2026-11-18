@@ -1,0 +1,407 @@
+{
+  "version": "3",
+  "templates": [
+    {
+      "id": 1,
+      "type": 2,
+      "administrator_only": true,
+      "title": "Traefik",
+      "name": "traefik",
+      "description": "Reverse proxy commun à tous les produits Adipsys.",
+      "note": "A déployer en premier, avant tout produit Adipsys. Crée le réseau traefik_default.",
+      "platform": "linux",
+      "categories": [
+        "Infrastructure"
+      ],
+      "repository": {
+        "url": "https://github.com/Adipsys/public",
+        "stackfile": "/stacks/traefik.yml"
+      },
+      "env": [
+        {
+          "name": "TRAEFIK_VERSION",
+          "label": "Traefik version",
+          "description": "Image tag (traefik:<version>).",
+          "default": "v3",
+          "preset": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": 2,
+      "administrator_only": true,
+      "title": "Hotspot Manager",
+      "name": "hotspotmanager",
+      "description": "Create captive portals compliant with Wi-Fi legislation and collect data.",
+      "note": "Adipsys HotspotManager: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires the Traefik stack.",
+      "platform": "linux",
+      "categories": [
+        "Adipsys"
+      ],
+      "logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Logo-Hotspot-Manager-200x200-optimise.png",
+      "repository": {
+        "url": "https://github.com/Adipsys/public",
+        "stackfile": "/stacks/hotspotmanager.yml"
+      },
+      "env": [
+        {
+          "name": "PRODUCT_SOURCE",
+          "label": "Images source",
+          "default": "registry.adipsys.com/hotspotmanager",
+          "preset": true
+        },
+        {
+          "name": "PRODUCT_VERSION",
+          "label": "Release",
+          "description": "Product version. Change it in the stack to update.",
+          "default": "3.42.1"
+        },
+        {
+          "name": "DB_VERSION",
+          "label": "Database release",
+          "description": "Database image version.",
+          "default": "3.40.0",
+          "preset": true
+        },
+        {
+          "name": "LICENCE_SERVER",
+          "label": "Licence server",
+          "default": "licences.adipsys.com",
+          "preset": true
+        },
+        {
+          "name": "OPERATOR",
+          "label": "Operator*",
+          "description": "Your company name (no spaces nor special characters)."
+        },
+        {
+          "name": "HM_SERVER_NAME",
+          "label": "Server name*",
+          "description": "Hostname used with the domain to build all the server URLs.",
+          "default": "wifi"
+        },
+        {
+          "name": "HM_URL_SUFFIX",
+          "label": "Domain*",
+          "description": "i.e. adipsys.com"
+        },
+        {
+          "name": "MYSQL_ROOT_PASSWORD",
+          "label": "MySQL root password*",
+          "description": "Please keep the password for further use."
+        },
+        {
+          "name": "OPERATOR_SUPPORT_EMAIL",
+          "label": "Support email*",
+          "default": "support@adipsys.com"
+        },
+        {
+          "name": "TZ",
+          "label": "Timezone",
+          "default": "Europe/Paris"
+        },
+        {
+          "name": "RADIUS_AUTH_PORT",
+          "label": "Radius authentication port (UDP)",
+          "default": "1812"
+        },
+        {
+          "name": "RADIUS_ACC_PORT",
+          "label": "Radius accounting port (UDP)",
+          "default": "1813"
+        },
+        {
+          "name": "LOGHOST_PORT",
+          "label": "Loghost port (UDP)",
+          "default": "514"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": 2,
+      "administrator_only": true,
+      "title": "Hotspot Manager HA",
+      "name": "hotspotmanager-ha",
+      "description": "High availability setup on a 3-manager Swarm cluster (advanced users only).",
+      "note": "Adipsys HotspotManager HA: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires a 3-manager Swarm cluster and the Traefik stack.",
+      "platform": "linux",
+      "categories": [
+        "Adipsys"
+      ],
+      "logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Logo-Hotspot-Manager-200x200-optimise.png",
+      "repository": {
+        "url": "https://github.com/Adipsys/public",
+        "stackfile": "/stacks/hotspotmanager-ha.yml"
+      },
+      "env": [
+        {
+          "name": "PRODUCT_SOURCE",
+          "label": "Images source",
+          "default": "registry.adipsys.com/hotspotmanager",
+          "preset": true
+        },
+        {
+          "name": "PRODUCT_VERSION",
+          "label": "Release",
+          "description": "Product version. Change it in the stack to update.",
+          "default": "3.42.1"
+        },
+        {
+          "name": "DB_VERSION",
+          "label": "Database release",
+          "description": "Database image version.",
+          "default": "3.40.0",
+          "preset": true
+        },
+        {
+          "name": "LICENCE_SERVER",
+          "label": "Licence server",
+          "default": "licences.adipsys.com",
+          "preset": true
+        },
+        {
+          "name": "HA_PRIMARY_NODE",
+          "label": "Primary node hostname*",
+          "description": "Hostname of the primary node (see docker node ls). It runs the DB seed, the admin web and rsyslog."
+        },
+        {
+          "name": "HA_DB_REPLICAS",
+          "label": "Galera secondary nodes",
+          "description": "Keep 1 for the initial bootstrap (seed + 1 node). Once the cluster is synced, set it to 2 in the stack and update it to add the 3rd node.",
+          "default": "1"
+        },
+        {
+          "name": "OPERATOR",
+          "label": "Operator*",
+          "description": "Your company name (no spaces nor special characters)."
+        },
+        {
+          "name": "HM_SERVER_NAME",
+          "label": "Server name*",
+          "description": "Hostname used with the domain to build all the server URLs.",
+          "default": "wifi"
+        },
+        {
+          "name": "HM_URL_SUFFIX",
+          "label": "Domain*",
+          "description": "i.e. adipsys.com"
+        },
+        {
+          "name": "MYSQL_ROOT_PASSWORD",
+          "label": "MySQL root password*",
+          "description": "Please keep the password for further use."
+        },
+        {
+          "name": "OPERATOR_SUPPORT_EMAIL",
+          "label": "Support email*",
+          "default": "support@adipsys.com"
+        },
+        {
+          "name": "TZ",
+          "label": "Timezone",
+          "default": "Europe/Paris"
+        },
+        {
+          "name": "RADIUS_AUTH_PORT",
+          "label": "Radius authentication port (UDP)",
+          "default": "1812"
+        },
+        {
+          "name": "RADIUS_ACC_PORT",
+          "label": "Radius accounting port (UDP)",
+          "default": "1813"
+        },
+        {
+          "name": "LOGHOST_PORT",
+          "label": "Loghost port (UDP)",
+          "default": "514"
+        },
+        {
+          "name": "HOTSPOT_ALIAS1",
+          "label": "Hotspot URL alias",
+          "description": "If you need a secondary URL for your Hotspot."
+        },
+        {
+          "name": "ADMIN_ALIAS1",
+          "label": "Admin URL alias",
+          "description": "If you need a secondary URL for your Admin interface."
+        },
+        {
+          "name": "RSYSLOG_SERVER",
+          "label": "Loghost",
+          "description": "If you need to send logs to another server (i.e. LOGview)."
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": 2,
+      "administrator_only": true,
+      "title": "DNS Protect",
+      "name": "dnsprotect",
+      "description": "Secure Wi-Fi connections: protect users by filtering malicious/illegal contents.",
+      "note": "Adipsys DNSprotect: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires the Traefik stack.",
+      "platform": "linux",
+      "categories": [
+        "Adipsys"
+      ],
+      "logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Pictos-dns-protect-200x200-optimise.png",
+      "repository": {
+        "url": "https://github.com/Adipsys/public",
+        "stackfile": "/stacks/dnsprotect.yml"
+      },
+      "env": [
+        {
+          "name": "PRODUCT_SOURCE",
+          "label": "Images source",
+          "default": "registry.adipsys.com/dnsprotect",
+          "preset": true
+        },
+        {
+          "name": "PRODUCT_VERSION",
+          "label": "Release",
+          "description": "Product version. Change it in the stack to update.",
+          "default": "3.0.0"
+        },
+        {
+          "name": "DB_VERSION",
+          "label": "Database release",
+          "description": "Database image version.",
+          "default": "2.3.0",
+          "preset": true
+        },
+        {
+          "name": "LICENCE_SERVER",
+          "label": "Licence server",
+          "default": "licences.adipsys.com",
+          "preset": true
+        },
+        {
+          "name": "SERVER_NAME",
+          "label": "Server URL*",
+          "description": "URL of the admin interface (must also be set in your DNS)."
+        },
+        {
+          "name": "MYSQL_ROOT_PASSWORD",
+          "label": "MySQL root password*",
+          "description": "Please keep the password for further use."
+        },
+        {
+          "name": "ADMIN_PASSWD",
+          "label": "Admin interface password*",
+          "description": "Account: admin."
+        },
+        {
+          "name": "DNS_PORT",
+          "label": "DNS server port (UDP)",
+          "description": "Changing it is not advised.",
+          "default": "53"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": 2,
+      "administrator_only": true,
+      "title": "STUDIO",
+      "name": "studio",
+      "description": "Create and broadcast targeted advertising and informational contents before and/or after the captive portal.",
+      "note": "Adipsys STUDIO: please read documentation on http://docs.adipsys.com. You can open a ticket at https://support.adipsys.com. Requires the Traefik stack.",
+      "platform": "linux",
+      "categories": [
+        "Adipsys"
+      ],
+      "logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Picto-Studio-200x200-optimise.png",
+      "repository": {
+        "url": "https://github.com/Adipsys/public",
+        "stackfile": "/stacks/studio.yml"
+      },
+      "env": [
+        {
+          "name": "PRODUCT_SOURCE",
+          "label": "Images source",
+          "default": "registry.adipsys.com/studio",
+          "preset": true
+        },
+        {
+          "name": "PRODUCT_VERSION",
+          "label": "Release",
+          "description": "Product version. Change it in the stack to update.",
+          "default": "1.1.22"
+        },
+        {
+          "name": "OPERATOR",
+          "label": "Operator*",
+          "description": "Your company name (no spaces nor special characters)."
+        },
+        {
+          "name": "STUDIO_NAME",
+          "label": "Server URL*",
+          "description": "URL of the server (must also be set in your DNS)."
+        },
+        {
+          "name": "MYSQL_ROOT_PASSWORD",
+          "label": "MySQL root password*",
+          "description": "Please keep the password for further use."
+        },
+        {
+          "name": "ADMIN_PASSWD",
+          "label": "Admin interface password*"
+        },
+        {
+          "name": "OPERATOR_SUPPORT_EMAIL",
+          "label": "Support email*",
+          "default": "support@adipsys.com"
+        },
+        {
+          "name": "TZ",
+          "label": "Timezone",
+          "default": "Europe/Paris"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": 2,
+      "administrator_only": true,
+      "title": "rSyslog",
+      "name": "rsyslog",
+      "description": "Standalone rSyslog service.",
+      "note": "rSyslog standalone",
+      "platform": "linux",
+      "categories": [
+        "Adipsys"
+      ],
+      "logo": "https://www.adipsys.com/wp-content/uploads/2019/08/Pictos-log-view-200x200-optimise.png",
+      "repository": {
+        "url": "https://github.com/Adipsys/public",
+        "stackfile": "/stacks/rsyslog.yml"
+      },
+      "env": [
+        {
+          "name": "PRODUCT_SOURCE",
+          "label": "Images source",
+          "default": "registry.adipsys.com/hotspotmanager",
+          "preset": true
+        },
+        {
+          "name": "PRODUCT_VERSION",
+          "label": "Release",
+          "default": "3.42.1"
+        },
+        {
+          "name": "TZ",
+          "label": "Timezone",
+          "default": "Europe/Paris"
+        },
+        {
+          "name": "RSYSLOG_PORT",
+          "label": "Loghost port (UDP)",
+          "default": "514"
+        }
+      ]
+    }
+  ]
+}
