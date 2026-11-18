@@ -138,7 +138,8 @@ if [ -n "$OPT_DOCKERHUB_MIRROR" ]; then UP_DOCKERHUB_MIRROR="$OPT_DOCKERHUB_MIRR
 if [ -n "$OPT_ADIPSYS_REGISTRY" ]; then UP_ADIPSYS_REGISTRY="$OPT_ADIPSYS_REGISTRY"; fi
 if [ -z "$UP_HTTP_PROXY" ] && [ -z "$OPT_PROXY" ] && [ "$FIRST_RUN" -eq 1 ]; then
     # Premier passage : proxy saisi dans l'installateur Debian (« Mandataire HTTP »), qu'il écrit dans /etc/apt/apt.conf.
-    UP_HTTP_PROXY="$(sed -n 's/^Acquire::http::Proxy "\(.*\)";$/\1/p' /etc/apt/apt.conf 2>/dev/null | head -n 1)"
+    # Sans proxy, le fichier n'existe pas : sed échoue, d'où le « || true » (set -e + pipefail).
+    UP_HTTP_PROXY="$(sed -n 's/^Acquire::http::Proxy "\(.*\)";$/\1/p' /etc/apt/apt.conf 2>/dev/null | head -n 1 || true)"
     case "$UP_HTTP_PROXY" in DIRECT|false) UP_HTTP_PROXY="" ;; esac
 fi
 # localhost et 127.0.0.1 toujours sans proxy (API Portainer locale).
@@ -290,7 +291,7 @@ wait_network
 
 if [ "$(docker info --format '{{.Swarm.LocalNodeState}}')" = "inactive" ]; then
     # Avec plusieurs adresses IP, Swarm refuse de choisir : on annonce celle de la route par défaut.
-    ADVERTISE_ADDR="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}' | head -n 1)"
+    ADVERTISE_ADDR="$(ip -4 route get 1.1.1.1 2>/dev/null | awk '{for (i = 1; i < NF; i++) if ($i == "src") print $(i + 1)}' | head -n 1 || true)"
     docker swarm init --default-addr-pool 10.200.0.0/16 ${ADVERTISE_ADDR:+--advertise-addr "$ADVERTISE_ADDR"}
     # Variante (ex. VMware, port VXLAN 4789 bloqué) : ajouter --data-path-port=9789
 fi
