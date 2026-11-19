@@ -30,6 +30,7 @@ La suite de ce README s'adresse aux équipes Adipsys (fonctionnement technique d
 | `stacks/dnsprotect.yml` | DNS Protect. |
 | `stacks/studio.yml` | STUDIO. |
 | `stacks/rsyslog.yml` | rSyslog autonome. |
+| `stacks/up-agent.yml` | Agent d'inventaire UP (un par nœud), qui remonte la configuration technique à la console du support. |
 | `bootstrap/up-bootstrap.sh` | Préparation d'un serveur UP (Docker, Swarm, Portainer, outils, sauvegardes), utilisée par l'ISO et sur une Debian 13 existante. |
 | `up-tools/` | Scripts d'exploitation clonés sur chaque serveur dans `/usr/local/bin/public/up-tools/`. |
 

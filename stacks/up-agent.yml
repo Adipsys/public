@@ -1,0 +1,40 @@
+# Agent d'inventaire Adipsys UP (up-agent) : un agent par nœud (mode global), qui envoie toutes les 6 h un rapport
+# technique (OS, ISO, Docker, Swarm, Portainer, produits et versions) à la console du support Adipsys.
+# Lecture seule : socket Docker et système de fichiers de l'hôte montés en lecture. Aucun port ouvert, aucune
+# commande reçue. Code et spécification : gitlab.adipsys.com/support/up-agent.
+version: '3.8'
+
+volumes:
+  # Volume local à chaque nœud (créé automatiquement) : jeton propre au nœud, reçu à l'enrôlement.
+  up-agent-data:
+
+networks:
+  hostnet:
+    external: true
+    name: host
+
+services:
+  up-agent:
+    image: ${PRODUCT_SOURCE}/up-agent:${PRODUCT_VERSION}
+    environment:
+      - UP_CONSOLE_URL=${UP_CONSOLE_URL:-https://up-console.adipsys.net}
+      - UP_ENROLL_TOKEN=${UP_ENROLL_TOKEN}
+      - UP_CUSTOMER_HINT=${UP_CUSTOMER_HINT:-}
+      - UP_REPORT_INTERVAL=${UP_REPORT_INTERVAL:-6h}
+      - HTTPS_PROXY=${HTTPS_PROXY:-}
+      - NO_PROXY=${NO_PROXY:-}
+    networks:
+      - hostnet
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /:/host:ro
+      - up-agent-data:/var/lib/up-agent
+    deploy:
+      mode: global
+      restart_policy:
+        condition: any
+        delay: 30s
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M

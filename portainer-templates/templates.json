@@ -366,6 +366,58 @@
           "default": "1"
         }
       ]
+    },
+    {
+      "id": 7,
+      "type": 2,
+      "administrator_only": true,
+      "title": "UP agent",
+      "name": "up-agent",
+      "description": "Inventory agent: sends a technical report (OS, ISO, Docker, Swarm, Portainer, Adipsys products and versions) to the Adipsys support console every 6 hours.",
+      "note": "Read-only, no open port. One agent per node (global service). Requires outbound HTTPS to up-console.adipsys.net (directly or through a proxy). The enrollment token is provided by Adipsys.",
+      "platform": "linux",
+      "categories": [
+        "Infrastructure"
+      ],
+      "repository": {
+        "url": "https://github.com/Adipsys/public",
+        "stackfile": "/stacks/up-agent.yml"
+      },
+      "env": [
+        {
+          "name": "PRODUCT_SOURCE",
+          "label": "Images source",
+          "default": "registry.adipsys.com/up-agent",
+          "preset": true
+        },
+        {
+          "name": "PRODUCT_VERSION",
+          "label": "Release",
+          "description": "Agent version. Change it in the stack to update.",
+          "default": "0.4.0"
+        },
+        {
+          "name": "UP_CONSOLE_URL",
+          "label": "Console URL",
+          "default": "https://up-console.adipsys.net",
+          "preset": true
+        },
+        {
+          "name": "UP_ENROLL_TOKEN",
+          "label": "Enrollment token*",
+          "description": "Provided by Adipsys support."
+        },
+        {
+          "name": "UP_CUSTOMER_HINT",
+          "label": "Customer name",
+          "description": "Optional, helps the support identify this server."
+        },
+        {
+          "name": "HTTPS_PROXY",
+          "label": "Outbound proxy",
+          "description": "Optional, e.g. http://proxy:3128 (leave empty for direct access)."
+        }
+      ]
     }
   ]
 }
