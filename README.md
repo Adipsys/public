@@ -117,7 +117,7 @@ Les serveurs installés sans l'ISO récente n'ont ni les outils (`up-update`, `u
 sert aux montées de version. En root, sur un manager du cluster :
 
 ```bash
-apt-get install -y git curl jq whiptail
+apt update && apt install -y git curl jq whiptail
 git clone https://github.com/Adipsys/public.git /usr/local/bin/public
 /usr/local/bin/public/up-tools/up-setup.sh tools
 ```
@@ -126,7 +126,7 @@ git clone https://github.com/Adipsys/public.git /usr/local/bin/public
 d'API Portainer dans `/root/.up-update.conf` à partir du compte administrateur demandé. Le Portainer est le Portainer
 local par défaut ; s'il ne répond pas (Portainer « séparé », sur une autre machine), son adresse est demandée et
 enregistrée (`PORTAINER_URL`). Une clé existante qui fonctionne est conservée ; la commande peut être relancée sans
-risque. Elle ne touche ni aux sauvegardes ni aux tâches planifiées. La console up-console (écran *Montées*) indique,
+risque. Elle ne touche ni aux sauvegardes ni aux tâches planifiées. La console up-console (écran *Mises à jour*) indique,
 pour chaque plateforme, si `up-update` est présent et les commandes à lancer sinon.
 
 Fichiers créés (root uniquement) : `/root/up-secrets.env` (mots de passe), `/root/.up-update.conf` (clé d'API Portainer),
@@ -186,10 +186,11 @@ Elle arrête les services applicatifs, restaure la base et les volumes, puis rem
 
 En HA, lancer le script sur le **nœud principal** (celui qui porte la base). Journal : `/var/log/up-update.log`.
 
-**Configuration (une fois par serveur)** : créer une clé d'API dans Portainer (*My account → Access tokens*), puis :
+**Configuration (une fois par serveur)** : le plus simple est `up-setup tools` (voir plus haut), qui crée la clé. À la main :
+créer une clé d'API dans Portainer (*My account → Access tokens*), puis :
 
 ```bash
-apt-get install -y jq        # déjà présent sur les serveurs installés avec une ISO récente
+apt update && apt install -y jq   # déjà présent sur les serveurs installés avec une ISO récente
 git -C /usr/local/bin/public pull
 install -m 600 /dev/null /root/.up-update.conf
 echo 'PORTAINER_API_KEY="ptr_xxxxxxxx"' >> /root/.up-update.conf

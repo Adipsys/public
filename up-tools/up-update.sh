@@ -640,7 +640,7 @@ while (( $# )); do
 done
 
 for cmd in docker curl jq gzip tar; do
-    command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt-get install -y $cmd)"; exit 1; }
+    command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt update && apt install -y $cmd)"; exit 1; }
 done
 
 if (( LIST )); then

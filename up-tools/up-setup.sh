@@ -843,7 +843,7 @@ main()
 {
     [[ "$(id -u)" -eq 0 ]] || { echo "À lancer en root."; exit 1; }
     for cmd in whiptail curl jq docker git; do
-        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt-get install -y $cmd)"; exit 1; }
+        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt update && apt install -y $cmd)"; exit 1; }
     done
     self_update "$@"
     [[ -f "$TEMPLATES" ]] || { echo "Templates introuvables : $TEMPLATES"; exit 1; }
@@ -868,7 +868,7 @@ main_agent()
 {
     [[ "$(id -u)" -eq 0 ]] || { echo "À lancer en root."; exit 1; }
     for cmd in whiptail curl jq docker git; do
-        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt-get install -y $cmd)"; exit 1; }
+        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt update && apt install -y $cmd)"; exit 1; }
     done
     self_update "$@"
     [[ -f "$TEMPLATES" ]] || { echo "Templates introuvables : $TEMPLATES"; exit 1; }
@@ -947,7 +947,7 @@ main_tools()
     local stacks
     [[ "$(id -u)" -eq 0 ]] || { echo "À lancer en root."; exit 1; }
     for cmd in whiptail curl jq docker git gzip tar; do
-        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt-get install -y $cmd)"; exit 1; }
+        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt update && apt install -y $cmd)"; exit 1; }
     done
     self_update "$@"
     log "=== up-setup tools ($(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo '?'))"
