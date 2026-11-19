@@ -409,7 +409,7 @@
         },
         {
           "name": "UP_CUSTOMER_HINT",
-          "label": "Customer name",
+          "label": "Operator name",
           "description": "Optional, helps the support identify this server."
         },
         {

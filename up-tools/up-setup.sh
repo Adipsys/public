@@ -733,7 +733,7 @@ step_agent()
             return 0
         fi
     fi
-    hint="$(ask_or_quit ask_input "Agent d'inventaire Adipsys : nom du client (facultatif).\n\nIl aide le support Adipsys à reconnaître ce serveur." "${UP_CUSTOMER_HINT:-}")"
+    hint="$(ask_or_quit ask_input "Agent d'inventaire Adipsys : nom de l'opérateur (facultatif).\n\nIl aide le support Adipsys à reconnaître ce serveur." "${UP_CUSTOMER_HINT:-}")"
 
     # Valeurs par défaut du template (registre interne éventuel), sans les champs fournis ici ; le proxy est
     # ajouté par with_proxy_env.
