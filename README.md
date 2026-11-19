@@ -93,14 +93,23 @@ up-setup
 L'assistant (en mode texte, relançable à tout moment) :
 
 1. vérifie les ressources (CPU, RAM, disque) et les **accès Internet** nécessaires (licences, registre Adipsys,
-   Docker Hub, GitHub, Debian, NTP) et signale ce qui est bloqué ;
+   Docker Hub, GitHub, Debian, NTP, console d'inventaire Adipsys) et signale ce qui est bloqué ;
 2. **crée le compte administrateur Portainer** (mot de passe généré) et une clé d'API (utilisée aussi par `up-update.sh`) ;
 3. demande les **identifiants du registre Adipsys**, les vérifie et les enregistre dans Portainer ;
 4. installe **Traefik** ;
 5. installe les **produits choisis** : seules les informations utiles sont demandées (société, nom du serveur, domaine,
    e-mail), les mots de passe sont générés, les **noms DNS sont vérifiés**, certificats Let's Encrypt en option ;
-6. affiche et enregistre un **récapitulatif** : adresses, ports à ouvrir pour les produits installés, étapes restantes
+6. installe l'**agent d'inventaire** (template `up-agent`) : il envoie toutes les 6 h la configuration technique du
+   serveur à la console du support Adipsys (`up-console.adipsys.net`, HTTPS sortant). Jeton d'enrôlement embarqué
+   dans l'ISO (`/etc/up/registry.env`) ou demandé ; seul le nom du client (facultatif) est demandé ;
+7. affiche et enregistre un **récapitulatif** : adresses, ports à ouvrir pour les produits installés, étapes restantes
    (licence, SMTP…).
+
+Sur un serveur déjà configuré, pour installer seulement l'agent d'inventaire :
+
+```bash
+up-setup agent
+```
 
 Fichiers créés (root uniquement) : `/root/up-secrets.env` (mots de passe), `/root/.up-update.conf` (clé d'API Portainer),
 `/root/up-install-report.txt` (récapitulatif). Journal : `/var/log/up-setup.log`.

@@ -3,6 +3,7 @@
 #
 # À lancer en root sur un serveur préparé par l'ISO Adipsys ou par up-bootstrap.sh :
 #     up-setup
+#     up-setup agent      installe seulement l'agent d'inventaire (serveur déjà configuré)
 #
 # Étapes :
 #   1. vérifications : ressources, accès Internet (licences, registre, mises à jour), heure ;
@@ -11,7 +12,9 @@
 #   4. Traefik (reverse proxy), déployé en premier ;
 #   5. produits (Hotspot Manager, DNS Protect, STUDIO) : questions réduites au nécessaire,
 #      mots de passe générés, vérification des noms DNS, déploiement et attente ;
-#   6. récapitulatif : adresses, identifiants, ports à ouvrir, étapes restantes.
+#   6. agent d'inventaire (up-agent), installé d'office : jeton d'enrôlement embarqué dans l'ISO
+#      (/etc/up/registry.env) ou demandé, nom du client facultatif ;
+#   7. récapitulatif : adresses, identifiants, ports à ouvrir, étapes restantes.
 #
 # Les définitions des produits (champs, valeurs par défaut) viennent de portainer-templates/templates.json,
 # les stacks de stacks/*.yml : l'assistant déploie exactement la même chose que les App Templates.
@@ -33,6 +36,8 @@ readonly SECRETS_FILE="${UP_SECRETS_FILE:-/root/up-secrets.env}"
 readonly REPORT_FILE="${UP_REPORT_FILE:-/root/up-install-report.txt}"
 readonly LOG_FILE="${UP_SETUP_LOG:-/var/log/up-setup.log}"
 readonly PORTAINER_URL="${PORTAINER_URL:-https://127.0.0.1:9443}"
+# Console d'inventaire du support Adipsys, à laquelle l'agent up-agent envoie ses rapports.
+readonly UP_CONSOLE_URL="${UP_CONSOLE_URL:-https://up-console.adipsys.net}"
 
 # Proxy et miroirs internes (up-bootstrap.sh --proxy / --dockerhub-mirror / --adipsys-registry).
 UP_HTTP_PROXY=""; UP_NO_PROXY="localhost,127.0.0.1"; UP_DOCKERHUB_MIRROR=""; UP_ADIPSYS_REGISTRY=""
@@ -217,6 +222,7 @@ step_checks()
         "Registre Adipsys (${REGISTRY})|https://${REGISTRY}/v2/" \
         "Docker Hub${UP_DOCKERHUB_MIRROR:+ (miroir)}|${UP_DOCKERHUB_MIRROR:-https://registry-1.docker.io}/v2/" \
         "GitHub (templates, outils)|https://raw.githubusercontent.com" \
+        "Console d'inventaire Adipsys|${UP_CONSOLE_URL}" \
         "Mises à jour Debian|https://deb.debian.org"; do
         name="${target%%|*}"; url="${target#*|}"
         if check_url "$url"; then
@@ -686,6 +692,70 @@ step_products()
     done
 }
 
+# ---------------------------------------------------------------- Agent d'inventaire
+
+# Jeton d'enrôlement de l'agent : variable UP_ENROLL_TOKEN, ou embarqué dans l'ISO (/etc/up/registry.env, root 600).
+# Il ne doit jamais être écrit dans ce dépôt public.
+agent_enroll_token()
+{
+    if [[ -n "${UP_ENROLL_TOKEN:-}" ]]; then
+        printf '%s' "$UP_ENROLL_TOKEN"
+    elif [[ -r "${REGISTRY_ENV_FILE:-/etc/up/registry.env}" ]]; then
+        (
+            UP_ENROLL_TOKEN=""
+            # shellcheck disable=SC1090
+            source "${REGISTRY_ENV_FILE:-/etc/up/registry.env}"
+            printf '%s' "$UP_ENROLL_TOKEN"
+        )
+    fi
+}
+
+# Agent d'inventaire (template « up-agent ») : un agent par nœud, qui envoie toutes les 6 h la configuration
+# technique du serveur à la console du support Adipsys. Installé d'office ; seul le nom du client est demandé.
+step_agent()
+{
+    local tpl token hint env_json
+    if stack_exists up-agent; then
+        log "Agent d'inventaire déjà déployé"
+        return 0
+    fi
+    if ! tpl="$(template_json up-agent)"; then
+        log "Template up-agent absent de ${TEMPLATES} : agent non installé"
+        return 0
+    fi
+
+    token="$(agent_enroll_token)"
+    if [[ -z "$token" ]]; then
+        token="$(ask_or_quit ask_input "Agent d'inventaire Adipsys : jeton d'enrôlement (fourni par le support Adipsys).\n\nLaisser vide pour ne pas installer l'agent maintenant (« up-setup agent » plus tard)." "")"
+        if [[ -z "$token" ]]; then
+            report "⚠ Agent d'inventaire non installé (pas de jeton d'enrôlement) : « up-setup agent » pour l'installer."
+            log "Agent d'inventaire non installé : pas de jeton"
+            return 0
+        fi
+    fi
+    hint="$(ask_or_quit ask_input "Agent d'inventaire Adipsys : nom du client (facultatif).\n\nIl aide le support Adipsys à reconnaître ce serveur." "${UP_CUSTOMER_HINT:-}")"
+
+    # Valeurs par défaut du template (registre interne éventuel), sans les champs fournis ici ; le proxy est
+    # ajouté par with_proxy_env.
+    env_json="$(jq --arg reg "$ADIPSYS_IMAGES" '[.env[]?
+        | select(.name | IN("HTTPS_PROXY", "UP_ENROLL_TOKEN", "UP_CUSTOMER_HINT") | not)
+        | {name: .name, value: ((.default // "") | if startswith("registry.adipsys.com") then sub("^registry.adipsys.com"; $reg) else . end)}]' <<< "$tpl")"
+    env_json="$(jq --arg t "$token" --arg h "$hint" \
+        '. + [{name: "UP_ENROLL_TOKEN", value: $t}, {name: "UP_CUSTOMER_HINT", value: $h}]' <<< "$env_json")"
+    env_json="$(with_proxy_env "$env_json" "$(stack_file_of "$tpl")")"
+
+    clear 2>/dev/null || true
+    echo "Déploiement de l'agent d'inventaire..."
+    deploy_stack up-agent "$(stack_file_of "$tpl")" "$env_json"
+    log "Stack up-agent déployée"
+    WAIT_FAILURE=""
+    if wait_stack up-agent; then
+        report "Agent d'inventaire installé (stack up-agent) : rapport toutes les 6 h vers ${UP_CONSOLE_URL}."
+    else
+        report "⚠ Agent d'inventaire : ${WAIT_FAILURE}"
+    fi
+}
+
 # ---------------------------------------------------------------- 6. Récapitulatif
 
 ports_for() {
@@ -721,7 +791,8 @@ step_summary()
             fi
         done
         echo
-        echo "Flux sortants nécessaires : 443/tcp vers licences.adipsys.com, ${REGISTRY}, Docker Hub, GitHub ;"
+        echo "Flux sortants nécessaires : 443/tcp vers licences.adipsys.com, ${REGISTRY}, Docker Hub, GitHub,"
+        echo "${UP_CONSOLE_URL#https://} (agent d'inventaire) ;"
         echo "80+443/tcp vers *.debian.org ; 123/udp (NTP)."
         echo "Accès du support Adipsys (178.33.43.243) : 22/tcp et 9443/tcp, plus les ports applicatifs."
         echo
@@ -773,7 +844,7 @@ main()
     [[ -f "$TEMPLATES" ]] || { echo "Templates introuvables : $TEMPLATES"; exit 1; }
     log "=== Démarrage de up-setup ($(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo '?'))"
 
-    msg "Bienvenue dans l'installation d'Adipsys UP!\n\nCet assistant va :\n  1. vérifier le serveur et ses accès Internet ;\n  2. configurer Portainer et le registre Adipsys ;\n  3. installer Traefik puis les produits choisis ;\n  4. afficher un récapitulatif (adresses, mots de passe, ports à ouvrir).\n\nMunissez-vous des identifiants du registre Adipsys et de vos noms de domaine.\nVous pouvez l'interrompre et le relancer à tout moment (commande « up-setup »)." 20
+    msg "Bienvenue dans l'installation d'Adipsys UP!\n\nCet assistant va :\n  1. vérifier le serveur et ses accès Internet ;\n  2. configurer Portainer et le registre Adipsys ;\n  3. installer Traefik, les produits choisis et l'agent d'inventaire Adipsys ;\n  4. afficher un récapitulatif (adresses, mots de passe, ports à ouvrir).\n\nMunissez-vous des identifiants du registre Adipsys et de vos noms de domaine.\nVous pouvez l'interrompre et le relancer à tout moment (commande « up-setup »)." 20
 
     step_checks
     step_portainer
@@ -781,13 +852,44 @@ main()
     step_registry
     step_traefik
     step_products
+    step_agent
     step_summary
     touch /var/lib/up/setup.done 2>/dev/null || true
     log "=== Fin de up-setup"
 }
 
+# « up-setup agent » : installe seulement l'agent d'inventaire (serveurs déjà configurés).
+main_agent()
+{
+    [[ "$(id -u)" -eq 0 ]] || { echo "À lancer en root."; exit 1; }
+    for cmd in whiptail curl jq docker git; do
+        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt-get install -y $cmd)"; exit 1; }
+    done
+    self_update "$@"
+    [[ -f "$TEMPLATES" ]] || { echo "Templates introuvables : $TEMPLATES"; exit 1; }
+    log "=== up-setup agent ($(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo '?'))"
+    check_url "$UP_CONSOLE_URL" \
+        || msg "Avertissement : ${UP_CONSOLE_URL} injoignable depuis ce serveur${UP_HTTP_PROXY:+ (proxy ${UP_HTTP_PROXY})}.\nL'agent sera installé mais ne pourra pas envoyer ses rapports tant que le flux 443/tcp n'est pas ouvert." 12
+    step_portainer
+    load_environment
+    step_registry
+    if stack_exists up-agent; then
+        msg "L'agent d'inventaire est déjà installé (stack up-agent dans Portainer)." 8
+    else
+        step_agent
+        msg "$(printf '%s\n' ${REPORT_LINES[@]+"${REPORT_LINES[@]}"})" 12
+    fi
+    clear 2>/dev/null || true
+    printf '%s\n' ${REPORT_LINES[@]+"${REPORT_LINES[@]}"}
+    log "=== Fin de up-setup agent"
+}
+
 trap 'log "Erreur ligne $LINENO : $BASH_COMMAND"; echo "Erreur inattendue (ligne $LINENO). Voir $LOG_FILE."' ERR
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-    main "$@"
+    if [[ "${1:-}" == "agent" ]]; then
+        main_agent "$@"
+    else
+        main "$@"
+    fi
 fi
