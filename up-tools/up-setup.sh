@@ -4,6 +4,8 @@
 # À lancer en root sur un serveur préparé par l'ISO Adipsys ou par up-bootstrap.sh :
 #     up-setup
 #     up-setup agent      installe seulement l'agent d'inventaire (serveur déjà configuré)
+#     up-setup tools      mise en conformité d'un serveur installé avant l'ISO : liens up-update / up-setup et
+#                         clé d'API Portainer (/root/.up-update.conf), Portainer local ou séparé
 #
 # Étapes :
 #   1. vérifications : ressources, accès Internet (licences, registre, mises à jour), heure ;
@@ -35,7 +37,10 @@ readonly CONF_FILE="${UP_UPDATE_CONF:-/root/.up-update.conf}"
 readonly SECRETS_FILE="${UP_SECRETS_FILE:-/root/up-secrets.env}"
 readonly REPORT_FILE="${UP_REPORT_FILE:-/root/up-install-report.txt}"
 readonly LOG_FILE="${UP_SETUP_LOG:-/var/log/up-setup.log}"
-readonly PORTAINER_URL="${PORTAINER_URL:-https://127.0.0.1:9443}"
+# Portainer qui gère le cluster : local par défaut ; un Portainer « séparé » se règle par PORTAINER_URL dans
+# /root/.up-update.conf (lu par step_portainer et up-setup tools), d'où une variable modifiable.
+readonly LOCAL_PORTAINER_URL="https://127.0.0.1:9443"
+PORTAINER_URL="${PORTAINER_URL:-$LOCAL_PORTAINER_URL}"
 # Console d'inventaire du support Adipsys, à laquelle l'agent up-agent envoie ses rapports.
 readonly UP_CONSOLE_URL="${UP_CONSOLE_URL:-https://up-console.adipsys.net}"
 
@@ -710,7 +715,7 @@ agent_enroll_token()
     fi
 }
 
-# Agent d'inventaire (template « up-agent ») : un agent par nœud, qui envoie toutes les 6 h la configuration
+# Agent d'inventaire (template « up-agent ») : un agent par nœud, qui envoie toutes les heures la configuration
 # technique du serveur à la console du support Adipsys. Installé d'office ; seul le nom du client est demandé.
 step_agent()
 {
@@ -750,7 +755,7 @@ step_agent()
     log "Stack up-agent déployée"
     WAIT_FAILURE=""
     if wait_stack up-agent; then
-        report "Agent d'inventaire installé (stack up-agent) : rapport toutes les 6 h vers ${UP_CONSOLE_URL}."
+        report "Agent d'inventaire installé (stack up-agent) : rapport toutes les heures vers ${UP_CONSOLE_URL}."
     else
         report "⚠ Agent d'inventaire : ${WAIT_FAILURE}"
     fi
@@ -884,11 +889,87 @@ main_agent()
     log "=== Fin de up-setup agent"
 }
 
+# ---------------------------------------------------------------- up-setup tools
+
+# Liens vers les outils du dépôt, comme up-bootstrap.sh sur l'ISO.
+tools_links()
+{
+    ln -sf "${REPO_DIR}/up-tools/up-update.sh" /usr/local/sbin/up-update
+    ln -sf "${REPO_DIR}/up-tools/up-setup.sh" /usr/local/sbin/up-setup
+    log "Liens up-update et up-setup créés vers ${REPO_DIR}"
+}
+
+# Code HTTP de /api/users/me avec la clé $1 sur le Portainer $2 (000 : injoignable).
+key_status()
+{
+    curl --silent --insecure --noproxy '*' --max-time 10 --output /dev/null --write-out '%{http_code}' \
+        --header "X-API-Key: $1" "$2/api/users/me" || true
+}
+
+portainer_up() { [[ "$(curl --silent --insecure --noproxy '*' --max-time 8 --output /dev/null --write-out '%{http_code}' "$1/api/system/status" || true)" == "200" ]]; }
+
+# Clé d'API Portainer dans /root/.up-update.conf : conservée si elle fonctionne, sinon créée avec le compte
+# administrateur (demandé). Portainer local par défaut ; s'il ne répond pas, adresse du Portainer « séparé ».
+tools_portainer()
+{
+    local user password url
+    if [[ -f "$CONF_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$CONF_FILE"
+        if [[ -n "${PORTAINER_API_KEY:-}" && "$(key_status "$PORTAINER_API_KEY" "$PORTAINER_URL")" == "200" ]]; then
+            log "Clé d'API existante valide (${PORTAINER_URL})"
+            report "Clé d'API Portainer : existante et valide (${PORTAINER_URL})."
+            return 0
+        fi
+        log "Clé d'API de ${CONF_FILE} absente ou refusée par ${PORTAINER_URL} : nouvelle clé"
+    fi
+
+    url="$PORTAINER_URL"
+    if ! portainer_up "$url"; then
+        url="$(ask_or_quit ask_input "Portainer ne répond pas sur ${url}.\n\nSi le Portainer qui gère ce cluster est sur une autre machine (Portainer « séparé »), saisir son adresse :" "${url}")"
+        url="${url%/}"
+        portainer_up "$url" || abort "Portainer ne répond pas sur ${url}"
+    fi
+    PORTAINER_URL="$url"
+
+    user="$(ask_or_quit ask_input "Compte administrateur du Portainer ${PORTAINER_URL}.\nNom d'utilisateur :" "admin")"
+    password="$(ask_or_quit ask_secret "Mot de passe Portainer de « ${user} » :")"
+    create_api_key "$user" "$password" || abort "connexion à ${PORTAINER_URL} impossible (identifiants ?)"
+    if [[ "$PORTAINER_URL" != "$LOCAL_PORTAINER_URL" ]]; then
+        printf 'PORTAINER_URL="%s"\n' "$PORTAINER_URL" >> "$CONF_FILE"
+    fi
+    log "Clé d'API Portainer créée (${PORTAINER_URL})"
+    report "Clé d'API Portainer : créée et enregistrée dans ${CONF_FILE} (${PORTAINER_URL})."
+}
+
+main_tools()
+{
+    local stacks
+    [[ "$(id -u)" -eq 0 ]] || { echo "À lancer en root."; exit 1; }
+    for cmd in whiptail curl jq docker git gzip tar; do
+        command -v "$cmd" > /dev/null || { echo "Commande manquante : $cmd (apt-get install -y $cmd)"; exit 1; }
+    done
+    self_update "$@"
+    log "=== up-setup tools ($(git -C "$REPO_DIR" rev-parse --short HEAD 2>/dev/null || echo '?'))"
+    tools_links
+    report "Commandes installées : up-update et up-setup (dépôt ${REPO_DIR})."
+    tools_portainer
+    API_KEY="${API_KEY:-${PORTAINER_API_KEY:-}}"
+    stacks="$(api GET /stacks | jq -r '[.[].Name] | sort | join(", ")' || true)"
+    report "Stacks vues par Portainer : ${stacks:-aucune}."
+    report "Montée de version : up-update -l, puis up-update -s <stack> -v <version>."
+    clear 2>/dev/null || true
+    printf '%s\n' ${REPORT_LINES[@]+"${REPORT_LINES[@]}"}
+    log "=== Fin de up-setup tools"
+}
+
 trap 'log "Erreur ligne $LINENO : $BASH_COMMAND"; echo "Erreur inattendue (ligne $LINENO). Voir $LOG_FILE."' ERR
 
 if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
     if [[ "${1:-}" == "agent" ]]; then
         main_agent "$@"
+    elif [[ "${1:-}" == "tools" ]]; then
+        main_tools "$@"
     else
         main "$@"
     fi

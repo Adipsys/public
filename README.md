@@ -99,7 +99,7 @@ L'assistant (en mode texte, relançable à tout moment) :
 4. installe **Traefik** ;
 5. installe les **produits choisis** : seules les informations utiles sont demandées (société, nom du serveur, domaine,
    e-mail), les mots de passe sont générés, les **noms DNS sont vérifiés**, certificats Let's Encrypt en option ;
-6. installe l'**agent d'inventaire** (template `up-agent`) : il envoie toutes les 6 h la configuration technique du
+6. installe l'**agent d'inventaire** (template `up-agent`) : il envoie toutes les heures la configuration technique du
    serveur à la console du support Adipsys (`up-console.adipsys.net`, HTTPS sortant). Jeton d'enrôlement embarqué
    dans l'ISO (`/etc/up/registry.env`) ou demandé ; seul le nom du client (facultatif) est demandé ;
 7. affiche et enregistre un **récapitulatif** : adresses, ports à ouvrir pour les produits installés, étapes restantes
@@ -110,6 +110,24 @@ Sur un serveur déjà configuré, pour installer seulement l'agent d'inventaire 
 ```bash
 up-setup agent
 ```
+
+### Mise en conformité d'un serveur installé avant l'ISO (`up-setup tools`)
+
+Les serveurs installés sans l'ISO récente n'ont ni les outils (`up-update`, `up-setup`) ni la clé d'API Portainer qui
+sert aux montées de version. En root, sur un manager du cluster :
+
+```bash
+apt-get install -y git curl jq whiptail
+git clone https://github.com/Adipsys/public.git /usr/local/bin/public
+/usr/local/bin/public/up-tools/up-setup.sh tools
+```
+
+`up-setup tools` crée les commandes `up-update` et `up-setup` (liens dans `/usr/local/sbin`, comme l'ISO), puis la clé
+d'API Portainer dans `/root/.up-update.conf` à partir du compte administrateur demandé. Le Portainer est le Portainer
+local par défaut ; s'il ne répond pas (Portainer « séparé », sur une autre machine), son adresse est demandée et
+enregistrée (`PORTAINER_URL`). Une clé existante qui fonctionne est conservée ; la commande peut être relancée sans
+risque. Elle ne touche ni aux sauvegardes ni aux tâches planifiées. La console up-console (écran *Montées*) indique,
+pour chaque plateforme, si `up-update` est présent et les commandes à lancer sinon.
 
 Fichiers créés (root uniquement) : `/root/up-secrets.env` (mots de passe), `/root/.up-update.conf` (clé d'API Portainer),
 `/root/up-install-report.txt` (récapitulatif). Journal : `/var/log/up-setup.log`.
