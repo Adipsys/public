@@ -53,6 +53,8 @@ services:
       - LICENCE_SERVER=${LICENCE_SERVER:-licences.adipsys.com}
       - RSYSLOG_SERVER=${RSYSLOG_SERVER:-}
       - REMEDIATION=yes
+      # DEBUG=1 : garde les contrôleurs Symfony de dev (backend_dev.php), recette uniquement
+      - DEBUG=${DEBUG:-0}
       - HTTP_PROXY=${HTTP_PROXY:-}
       - HTTPS_PROXY=${HTTPS_PROXY:-}
       - NO_PROXY=${NO_PROXY:-}
@@ -137,7 +139,7 @@ services:
     image: ${PRODUCT_SOURCE}/hm-ha-radius-v3:${PRODUCT_VERSION}
     environment:
       - TZ=${TZ:-Europe/Paris}
-      - DEBUG=0
+      - DEBUG=${DEBUG:-0}
     # Vide par défaut (commande de l'image). Debug : RADIUS_COMMAND="freeradius -XXX"
     command: "${RADIUS_COMMAND:-}"
     deploy:
