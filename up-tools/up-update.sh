@@ -16,6 +16,9 @@
 #      par Portainer (identifiants du registre) : une version inexistante est refusée avant toute coupure ;
 #   2. sauvegarde de la base (mysqldump) et des volumes de données dans /backups/pre-update/ ;
 #   3. changement de PRODUCT_VERSION par l'API Portainer (la stack reste gérée par Portainer) ;
+#      à partir de la 3.43.0, le fichier de la stack Hotspot Manager est aussi basculé de l'image
+#      memcached de Docker Hub (Debian 9, obsolète) vers l'image Adipsys hm-memcached (voir migrate_stack_file) ;
+#      le fichier d'origine est conservé dans la sauvegarde et remis par le retour arrière ;
 #   4. attente que tous les services soient à jour, que l'entrypoint ait fini (message de fin
 #      dans les logs, ex. hm-web) et que la page de connexion réponde ;
 #   5. contrôle des logs des services depuis la mise à jour (copiés dans DOSSIER/logs/) :
@@ -50,6 +53,8 @@ readonly DB_SERVICE_PATTERN='_(hm-db-seed|hm-db|dnsp-db|studio-db)\.'
 readonly LOG_ERROR_PATTERN="${UP_UPDATE_LOG_ERRORS:-(^|[^[:alnum:]_])(error|fatal|exception|sqlstate|failed|failure)([^[:alnum:]_]|$)}"
 # Lignes à ne pas signaler (ex. bruit connu d'un produit) ; vide : aucune.
 readonly LOG_IGNORE_PATTERN="${UP_UPDATE_LOG_IGNORE:-}"
+# Première version dont l'image hm-memcached repose sur une Debian à jour.
+readonly HM_MEMCACHED_MIN_VERSION="3.43.0"
 
 STACK=""
 VERSION=""
@@ -132,11 +137,11 @@ stack_file_content()
     printf '%s\n' "$content"
 }
 
-# Images de la stack qui suivent PRODUCT_VERSION, résolues pour la version $2 (une par ligne).
-# Les variables ${NOM} et ${NOM:-défaut} sont remplacées par les valeurs de la stack.
+# Images du fichier de stack $3 qui suivent PRODUCT_VERSION, résolues pour la version $2 (une par ligne).
+# Les variables ${NOM} et ${NOM:-défaut} sont remplacées par les valeurs de la stack $1.
 target_images()
 {
-    local stack="$1" version="$2" image name value
+    local stack="$1" version="$2" file="$3" image name value
 
     while read -r image; do
         [[ -n "$image" ]] || continue
@@ -148,21 +153,22 @@ target_images()
             image="${image/"${BASH_REMATCH[0]}"/$value}"
         done
         echo "$image"
-    done < <(stack_file_content "$stack" \
+    done < <(printf '%s\n' "$file" \
         | sed -n "s/^[[:space:]]*image:[[:space:]]*[\"']\{0,1\}\([^\"']*\)[\"']\{0,1\}[[:space:]]*\$/\1/p" \
         | grep -F '${PRODUCT_VERSION}' | sort -u || true)
 }
 
-# Télécharge par Portainer (qui fournit les identifiants du registre) les images de la version $2.
-# S'arrête avant toute modification si l'une d'elles n'existe pas ou n'est pas accessible.
+# Télécharge par Portainer (qui fournit les identifiants du registre) les images de la version $2,
+# d'après le fichier de stack $3. S'arrête avant toute modification si l'une d'elles n'existe pas
+# ou n'est pas accessible.
 pull_images()
 {
-    local stack="$1" version="$2" endpoint_id registries images image repo tag host registry_id code body reason
+    local stack="$1" version="$2" file="$3" endpoint_id registries images image repo tag host registry_id code body reason
     local auth=()
 
     endpoint_id="$(jq -r '.EndpointId' <<< "$stack")"
     registries="$(api GET /registries 2>/dev/null || echo '[]')"
-    images="$(target_images "$stack" "$version")"
+    images="$(target_images "$stack" "$version" "$file")"
     [[ -n "$images" ]] || { log "Aucune image ne dépend de PRODUCT_VERSION : vérification ignorée"; return 0; }
 
     body="$(mktemp)"
@@ -191,14 +197,14 @@ pull_images()
     log "Images de la version ${version} disponibles"
 }
 
+# Redéploie la stack avec la version $2 et le fichier de stack $3.
 update_stack_version()
 {
-    local stack="$1" new_version="$2"
-    local stack_id endpoint_id stack_file payload
+    local stack="$1" new_version="$2" stack_file="$3"
+    local stack_id endpoint_id payload
 
     stack_id="$(jq -r '.Id' <<< "$stack")"
     endpoint_id="$(jq -r '.EndpointId' <<< "$stack")"
-    stack_file="$(stack_file_content "$stack")"
 
     payload="$(jq -n \
         --arg file "$stack_file" \
@@ -216,6 +222,51 @@ update_stack_version()
     api PUT "/stacks/${stack_id}?endpointId=${endpoint_id}" \
         --header 'Content-Type: application/json' \
         --data "$payload" > /dev/null
+}
+
+# ---------------------------------------------------------------- Fichier de stack
+
+# $1 >= $2 (numéros de version)
+version_ge()
+{
+    [[ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" == "$2" ]]
+}
+
+# Bascule memcached de Hotspot Manager : image memcached 1.4.x de Docker Hub (Debian 9, obsolète,
+# avec ou sans préfixe de miroir) → image Adipsys hm-memcached versionnée avec le produit,
+# et désactivation de l'UDP (-U 0). Fichier de stack sur l'entrée standard, résultat sur la sortie.
+# Une stack déjà basculée ou sans memcached ressort inchangée.
+migrate_stack_file()
+{
+    sed -E \
+        -e "s#^([[:space:]]*image:[[:space:]]*)[\"']?([^\"'[:space:]]*/)?(library/)?memcached:1\.4\.[0-9]+[\"']?[[:space:]]*\$#\1\${PRODUCT_SOURCE}/hm-memcached:\${PRODUCT_VERSION}#" \
+        -e "s#^([[:space:]]*command:[[:space:]]*)\"memcached -p 11212\"[[:space:]]*\$#\1\"memcached -p 11212 -U 0\"#"
+}
+
+# Fichier de stack à déployer pour la version $3, à partir du fichier actuel $2 de la stack $1.
+# Les modifications sont journalisées ; un cas non reconnu est signalé sans être modifié.
+target_stack_file()
+{
+    local stack="$1" file="$2" version="$3" migrated
+
+    if ! version_ge "$version" "$HM_MEMCACHED_MIN_VERSION"; then
+        printf '%s\n' "$file"
+        return 0
+    fi
+    migrated="$(migrate_stack_file <<< "$file")"
+    if [[ "$migrated" != "$file" ]]; then
+        if [[ -z "$(stack_env_value "$stack" PRODUCT_SOURCE)" ]]; then
+            log "Avertissement : variable PRODUCT_SOURCE absente de la stack, memcached n'est pas basculé sur hm-memcached" >&2
+            migrated="$file"
+        else
+            log "Fichier de la stack : memcached basculé sur l'image Adipsys hm-memcached" >&2
+            diff <(printf '%s\n' "$file") <(printf '%s\n' "$migrated") | grep '^[<>]' | sed 's/^/    /' >&2 || true
+        fi
+    fi
+    if grep -qE '^[[:space:]]*image:.*[^-_[:alnum:]]memcached:' <<< "$migrated"; then
+        log "Avertissement : image memcached de Docker Hub non reconnue dans la stack, à basculer à la main sur hm-memcached" >&2
+    fi
+    printf '%s\n' "$migrated"
 }
 
 # ---------------------------------------------------------------- Docker
@@ -465,7 +516,7 @@ do_list()
 
 do_update()
 {
-    local stack current dir state free needed since
+    local stack current dir state free needed since file new_file
 
     load_config
     stack="$(stack_json)"
@@ -486,8 +537,11 @@ do_update()
     needed=1048576   # 1 Go minimum
     (( free > needed )) || die "moins de 1 Go libre dans ${BACKUP_ROOT}"
 
+    file="$(stack_file_content "$stack")"
+    new_file="$(target_stack_file "$stack" "$file" "$VERSION")"
+
     if (( IMAGE_CHECK )); then
-        pull_images "$stack" "$VERSION"
+        pull_images "$stack" "$VERSION" "$new_file"
     fi
 
     log "Mise à jour ${current} → ${VERSION}"
@@ -495,6 +549,9 @@ do_update()
     echo "  Stack     : ${STACK}"
     echo "  Version   : ${current} → ${VERSION}"
     echo "  Sauvegarde: ${BACKUP_ROOT}/${STACK}-${current}-<date>/"
+    if [[ "$new_file" != "$file" ]]; then
+        echo "  memcached : image Docker Hub (Debian 9) → hm-memcached:${VERSION} (image Adipsys)"
+    fi
     echo "  Les migrations de base ne sont pas réversibles. Un snapshot de la VM est recommandé."
     echo
     confirm "Lancer la mise à jour ?" || die "annulé"
@@ -502,13 +559,14 @@ do_update()
     dir="${BACKUP_ROOT}/${STACK}-${current}-$(date +%Y%m%d-%H%M%S)"
     backup "$dir"
     jq '{Id, Name, EndpointId, Env}' <<< "$stack" > "${dir}/stack.json"
+    printf '%s\n' "$file" > "${dir}/stack-file.yml"
     printf 'STACK=%s\nFROM_VERSION=%s\nTO_VERSION=%s\nDATE=%s\n' \
         "$STACK" "$current" "$VERSION" "$(date '+%Y-%m-%dT%H:%M:%S%z')" > "${dir}/update.env"
     log "Sauvegarde terminée : ${dir}"
 
     log "Mise à jour de la stack par l'API Portainer ..."
     since="$(date +%s)"
-    update_stack_version "$stack" "$VERSION"
+    update_stack_version "$stack" "$VERSION" "$new_file"
 
     if wait_for_stack "$stack" "$VERSION" "$since"; then
         if check_logs "$since" "$dir"; then
@@ -545,7 +603,7 @@ contact_support()
 
 do_rollback()
 {
-    local stack from_version service replicas since entry
+    local stack from_version service replicas since entry file
     local saved_replicas=()
 
     load_config
@@ -576,9 +634,17 @@ do_rollback()
 
     restore "$ROLLBACK_DIR"
 
+    # Fichier de stack d'avant la mise à jour (sauvegardes récentes) ; sinon le fichier actuel.
+    if [[ -f "${ROLLBACK_DIR}/stack-file.yml" ]]; then
+        file="$(cat "${ROLLBACK_DIR}/stack-file.yml")"
+        log "Fichier de la stack d'avant la mise à jour remis en place"
+    else
+        file="$(stack_file_content "$stack")"
+    fi
+
     log "Retour à la version ${from_version} par l'API Portainer ..."
     since="$(date +%s)"
-    update_stack_version "$stack" "$from_version"
+    update_stack_version "$stack" "$from_version" "$file"
 
     # Remet le nombre de réplicas d'origine aux services restés à 0 après le redéploiement.
     for entry in ${saved_replicas[@]+"${saved_replicas[@]}"}; do

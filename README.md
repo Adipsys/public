@@ -75,7 +75,7 @@ sudo bash up-bootstrap.sh --proxy http://proxy.client.fr:3128 \
 |---|---|
 | `--proxy URL` | Proxy pour apt, git, curl, Docker (téléchargement des images), Portainer et les produits (licences, API externes). `none` le retire. Avec l'ISO, le proxy saisi dans l'installateur Debian (« Mandataire HTTP ») est repris automatiquement. |
 | `--no-proxy LISTE` | Destinations jointes sans proxy (`localhost` et `127.0.0.1` toujours inclus ; les noms des services internes sont ajoutés aux stacks). |
-| `--dockerhub-mirror URL` | Miroir interne de Docker Hub (Portainer, Traefik, memcached…). |
+| `--dockerhub-mirror URL` | Miroir interne de Docker Hub (Portainer, Traefik…). |
 | `--adipsys-registry CHEMIN` | Registre interne qui réplique `registry.adipsys.com` (ex. projet proxy-cache Harbor) : utilisé par `up-setup` pour les images des produits. |
 
 Les réglages sont enregistrés dans `/etc/up/up.conf` (relancer `up-bootstrap.sh` pour les modifier) et repris par
@@ -173,6 +173,9 @@ Le script :
 2. sauvegarde la base (`mysqldump`) et les volumes de données (hors base, logs et index Elasticsearch)
    dans `/backups/pre-update/<stack>-<ancienne version>-<date>/` (3 dernières sauvegardes conservées par stack) ;
 3. change `PRODUCT_VERSION` **par l'API Portainer** (la stack reste gérée normalement dans Portainer) ;
+   pour Hotspot Manager en 3.43.0 ou plus, il bascule aussi dans le fichier de la stack l'image memcached de Docker Hub
+   (Debian 9, obsolète) vers l'image Adipsys `hm-memcached` (changement affiché avant confirmation, fichier d'origine
+   gardé dans la sauvegarde) ;
 4. attend que tous les services soient à jour (15 min max, option `-t`) et que la page de connexion de l'administration
    réponde (option `--no-http` pour ne pas la tester).
 
@@ -182,7 +185,7 @@ En cas d'échec, ou d'erreurs dans les logs, il renvoie le client vers le suppor
 up-update.sh -s hotspotmanager --rollback /backups/pre-update/hotspotmanager-3.41.2-20261118-103000/
 ```
 
-Elle arrête les services applicatifs, restaure la base et les volumes, puis remet l'ancienne version par l'API Portainer.
+Elle arrête les services applicatifs, restaure la base et les volumes, puis remet l'ancienne version (et le fichier de stack d'avant la mise à jour) par l'API Portainer.
 
 En HA, lancer le script sur le **nœud principal** (celui qui porte la base). Journal : `/var/log/up-update.log`.
 

@@ -233,8 +233,9 @@ services:
       - hm-web
 
   hm-memcached:
-    image: memcached:1.4.39
-    command: "memcached -p 11212"
+    # Image Adipsys (memcached 1.4.39 recompilé sur Debian à jour), versionnée avec le produit
+    image: ${PRODUCT_SOURCE}/hm-memcached:${PRODUCT_VERSION}
+    command: "memcached -p 11212 -U 0"
     deploy:
       placement:
         max_replicas_per_node: 1
