@@ -225,6 +225,34 @@ Ces variables ne sont pas dans les formulaires ; elles sont vides par défaut et
 | `TLS_RESOLVER` | HM, HM HA, DNS Protect, STUDIO | `letsencrypt` pour des certificats automatiques (voir [Certificats TLS](#certificats-tls)). |
 | `TRAEFIK_VERSION` | Traefik | Tag de l'image Traefik (défaut `v3`). |
 
+### Dashboard Traefik
+
+L'API et le dashboard Traefik sont **désactivés** dans la stack (`--api=false`) : ils exposent la topologie
+du cluster et ne doivent jamais rester accessibles en production.
+
+Pour un debug ponctuel, modifier la stack Traefik dans Portainer le temps de l'intervention, puis revenir
+à la version du dépôt :
+
+```yaml
+    command:
+      - "--api=true"
+      - "--api.dashboard=true"
+    deploy:
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=Host(`traefik-ui.local`)"
+        - "traefik.http.routers.traefik.entrypoints=websecure"
+        - "traefik.http.routers.traefik.tls=true"
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.routers.traefik.middlewares=traefik-auth,traefik-ip"
+        - "traefik.http.middlewares.traefik-auth.basicauth.users=<hash>"
+        - "traefik.http.middlewares.traefik-ip.ipallowlist.sourcerange=<IP d'administration>/32"
+        - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
+```
+
+- Toujours en HTTPS (`websecure`), jamais sur `web`, et avec les deux middlewares.
+- Générer un hash propre à l'intervention (`htpasswd -nBC 10 admin`, en doublant les `$`), ne jamais le commiter.
+
 ## Hotspot Manager HA
 
 Prérequis : un cluster Swarm de **3 nœuds managers** et la stack Traefik déployée.

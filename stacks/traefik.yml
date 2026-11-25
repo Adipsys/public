@@ -17,8 +17,10 @@ services:
   reverse-proxy:
     image: traefik:${TRAEFIK_VERSION:-v3}
     command:
-      - "--api=true"
-      - "--api.dashboard=true"
+      # API et dashboard désactivés : ils ne servent qu'au debug et ne doivent jamais
+      # être exposés en production.
+      # Pour un debug ponctuel, voir la section "Dashboard Traefik" du README.
+      - "--api=false"
       - "--log.level=INFO"
       - "--providers.file.filename=/traefik/traefik.yaml"
 
@@ -59,11 +61,3 @@ services:
       placement:
         constraints:
           - node.role == manager
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=Host(`traefik-ui.local`)"
-        - "traefik.http.routers.traefik.entrypoints=web"
-        - "traefik.http.routers.traefik.service=api@internal"
-        - "traefik.http.middlewares.traefik-auth.basicauth.users=admin:$$2y$$10$$jOouW3T7g.TFxovQPx6kG.pxHSCMBVvSLdFF5MR8oXzALmQJMFyqe"
-        - "traefik.http.routers.traefik.middlewares=traefik-auth"
-        - "traefik.http.services.dummy-svc.loadbalancer.server.port=9999"
