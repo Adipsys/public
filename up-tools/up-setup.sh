@@ -326,11 +326,16 @@ step_portainer()
 {
     local status user password
 
-    wait_portainer
-
+    # La configuration est lue avant d'attendre Portainer : elle peut désigner un Portainer séparé
+    # (PORTAINER_URL enregistré par « up-setup tools »), sinon on attendrait le Portainer local pour rien.
     if [[ -f "$CONF_FILE" ]]; then
         # shellcheck disable=SC1090
         source "$CONF_FILE"
+    fi
+
+    wait_portainer
+
+    if [[ -f "$CONF_FILE" ]]; then
         API_KEY="${PORTAINER_API_KEY:-}"
         if [[ -n "$API_KEY" && "$(curl --silent --insecure --noproxy '*' --output /dev/null --write-out '%{http_code}' \
                 --header "X-API-Key: ${API_KEY}" "${PORTAINER_URL}/api/users/me" || true)" == "200" ]]; then
