@@ -35,6 +35,7 @@ up-setup
 
 L'assistant vérifie le serveur, configure Portainer, puis vous demande :
 
+- un **nom de machine**, si celui donné à l'installation est générique (« unassigned », « debian »…) ;
 - les **produits** à installer (Hotspot Manager, DNS Protect, Studio) ;
 - leurs **noms DNS** ;
 - le **certificat** : Let's Encrypt (automatique) ou celui de votre entreprise.

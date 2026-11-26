@@ -33,6 +33,7 @@ up-setup
 
 The wizard's screens are in French. It checks the server, configures Portainer, then asks for:
 
+- a **machine name**, if the one given at installation is generic ("unassigned", "debian"…);
 - the **products** to install (Hotspot Manager, DNS Protect, Studio);
 - their **DNS names**;
 - the **certificate**: Let's Encrypt (automatic) or your company's.

@@ -157,7 +157,7 @@ up-setup
 
 It updates itself at startup, can be interrupted and run again at any time, and goes through these steps:
 
-1. **Checks**: VM resources, access to the licence server, the Adipsys registry, Docker Hub, GitHub and Debian, time synchronisation. Anything blocked is reported before going further.
+1. **Checks**: if the machine name is generic ("unassigned", "debian"…), the wizard asks for a real name, which identifies the server for Adipsys support. Then VM resources, access to the licence server, the Adipsys registry, Docker Hub, GitHub and Debian, time synchronisation. Anything blocked is reported before going further.
 2. **Portainer**: creates the administrator account with a generated password.
 3. **Adipsys registry**: credentials taken from the ISO, or entered then checked before being saved.
 4. **Traefik**: installs the reverse proxy shared by all products.

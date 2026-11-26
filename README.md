@@ -92,7 +92,7 @@ up-setup
 
 L'assistant (en mode texte, relançable à tout moment) :
 
-1. vérifie les ressources (CPU, RAM, disque) et les **accès Internet** nécessaires (licences, registre Adipsys,
+1. demande un **nom de machine** si celui de l'installation est générique (« unassigned », « debian »…), puis vérifie les ressources (CPU, RAM, disque) et les **accès Internet** nécessaires (licences, registre Adipsys,
    Docker Hub, GitHub, Debian, NTP, console d'inventaire Adipsys) et signale ce qui est bloqué ;
 2. **crée le compte administrateur Portainer** (mot de passe généré) et une clé d'API (utilisée aussi par `up-update.sh`) ;
 3. demande les **identifiants du registre Adipsys**, les vérifie et les enregistre dans Portainer ;

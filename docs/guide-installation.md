@@ -155,7 +155,7 @@ up-setup
 
 Il se met à jour seul au démarrage, peut être interrompu et relancé à tout moment, et enchaîne ces étapes :
 
-1. **Vérifications** : ressources de la VM, accès aux licences, au registre Adipsys, à Docker Hub, à GitHub et à Debian, heure synchronisée. Ce qui est bloqué est signalé avant d'aller plus loin.
+1. **Vérifications** : si le nom de la machine est générique (« unassigned », « debian »…), l'assistant demande un vrai nom, qui identifie le serveur auprès du support Adipsys. Puis ressources de la VM, accès aux licences, au registre Adipsys, à Docker Hub, à GitHub et à Debian, heure synchronisée. Ce qui est bloqué est signalé avant d'aller plus loin.
 2. **Portainer** : création du compte administrateur avec un mot de passe généré.
 3. **Registre Adipsys** : identifiants repris de l'ISO, ou saisis puis vérifiés avant enregistrement.
 4. **Traefik** : installation du reverse proxy commun à tous les produits.

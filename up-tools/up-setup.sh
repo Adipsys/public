@@ -8,6 +8,8 @@
 #                         clé d'API Portainer (/root/.up-update.conf), Portainer local ou séparé
 #
 # Étapes :
+#   0. nom de la machine : demandé s'il est générique (« unassigned », « debian »...), car il identifie le
+#      serveur dans Portainer et la console d'inventaire ;
 #   1. vérifications : ressources, accès Internet (licences, registre, mises à jour), heure ;
 #   2. Portainer : compte administrateur, clé d'API (pour up-update.sh) ;
 #   3. registre Adipsys : identifiants vérifiés puis enregistrés dans Portainer ;
@@ -194,6 +196,76 @@ admin_url_of()
     else
         head -n 1 <<< "$hosts"
     fi
+}
+
+# ---------------------------------------------------------------- 0. Nom de la machine
+
+# Nom générique : celui que l'installateur Debian propose d'après le DHCP ou le DNS inverse de l'IP
+# (« unassigned », « debian »...), gardé en validant la question par Entrée.
+generic_hostname()
+{
+    case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')" in
+        ""|"(none)"|none|localhost|localhost.*|localdomain|debian|debian.*|ubuntu|unassigned*|server|serveur|up) return 0 ;;
+    esac
+    return 1
+}
+
+# Nom court valide (RFC 1123) : minuscules, chiffres et tirets, 63 caractères au plus.
+valid_hostname() { [[ ${#1} -le 63 && "$1" =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; }
+
+# Applique le nom : /etc/hostname, ligne 127.0.1.1 de /etc/hosts, puis redémarrage de Docker pour que le nœud
+# Swarm (docker node ls, Portainer, agent d'inventaire) prenne le nouveau nom.
+apply_hostname()
+{
+    local new="$1" i
+    if command -v hostnamectl > /dev/null && hostnamectl set-hostname "$new" 2>>"$LOG_FILE"; then
+        :
+    else
+        printf '%s\n' "$new" > /etc/hostname
+        hostname "$new"
+    fi
+    if grep -qE '^127\.0\.1\.1[[:space:]]' /etc/hosts; then
+        sed -i -E "s/^127\.0\.1\.1[[:space:]].*/127.0.1.1\t${new}/" /etc/hosts
+    else
+        printf '127.0.1.1\t%s\n' "$new" >> /etc/hosts
+    fi
+    if systemctl is-active --quiet docker 2>/dev/null; then
+        echo "Redémarrage de Docker pour le nouveau nom..."
+        systemctl restart docker
+        for (( i = 0; i < 30; i++ )); do
+            docker info > /dev/null 2>&1 && break
+            sleep 2
+        done
+    fi
+}
+
+# Le nom de la machine identifie le serveur dans Portainer, le récapitulatif et la console d'inventaire du
+# support : s'il est générique, on demande un vrai nom (Annuler : nom actuel conservé).
+step_hostname()
+{
+    local current new
+    current="$(hostname)"
+    generic_hostname "$current" || { log "Nom de la machine : ${current}"; return 0; }
+
+    while true; do
+        if ! new="$(ask_input "Le nom de cette machine est « ${current} » : nom générique donné à l'installation.\n\nIl identifie le serveur auprès du support Adipsys. Saisir un nom, ex. up-client-site1\n(minuscules, chiffres et tirets). Docker sera redémarré (quelques secondes).\nAnnuler : garder « ${current} »." "")"; then
+            log "Nom générique « ${current} » conservé"
+            report "⚠ Nom de la machine générique conservé : « ${current} » (hostnamectl set-hostname <nom> pour le changer)."
+            return 0
+        fi
+        new="$(printf '%s' "$new" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')"
+        if ! valid_hostname "$new"; then
+            msg "Nom invalide : « ${new} »\n\nMinuscules, chiffres et tirets uniquement, sans tiret au début ni à la fin, 63 caractères au plus." 10
+        elif generic_hostname "$new"; then
+            msg "« ${new} » est un nom générique : choisir un nom qui identifie ce serveur." 8
+        else
+            break
+        fi
+    done
+
+    apply_hostname "$new"
+    log "Nom de la machine : ${current} → ${new}"
+    report "Nom de la machine : ${new} (anciennement « ${current} »)."
 }
 
 # ---------------------------------------------------------------- 1. Vérifications
@@ -856,6 +928,7 @@ main()
 
     msg "Bienvenue dans l'installation d'Adipsys UP!\n\nCet assistant va :\n  1. vérifier le serveur et ses accès Internet ;\n  2. configurer Portainer et le registre Adipsys ;\n  3. installer Traefik, les produits choisis et l'agent d'inventaire Adipsys ;\n  4. afficher un récapitulatif (adresses, mots de passe, ports à ouvrir).\n\nMunissez-vous des identifiants du registre Adipsys et de vos noms de domaine.\nVous pouvez l'interrompre et le relancer à tout moment (commande « up-setup »)." 20
 
+    step_hostname
     step_checks
     step_portainer
     load_environment
