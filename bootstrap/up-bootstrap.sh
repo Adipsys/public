@@ -172,6 +172,37 @@ fi
 if [ -n "$UP_DOCKERHUB_MIRROR" ]; then echo "--- Miroir Docker Hub : ${UP_DOCKERHUB_MIRROR}"; fi
 if [ -n "$UP_ADIPSYS_REGISTRY" ]; then echo "--- Registre Adipsys interne : ${UP_ADIPSYS_REGISTRY}"; fi
 
+# Résolution DNS : sans elle, rien ne s'installe (paquets, Docker, images) et apt affiche des erreurs trompeuses.
+# Derrière un proxy, seul le nom du proxy doit se résoudre : c'est lui qui résout les noms externes.
+check_dns()
+{
+    local name i servers
+    if [ -n "$UP_HTTP_PROXY" ]; then
+        name="$(printf '%s' "$UP_HTTP_PROXY" | sed -E 's#^[a-zA-Z]+://##; s#^[^@]*@##; s#[:/].*$##')"
+    else
+        name="deb.debian.org"
+    fi
+    if printf '%s' "$name" | grep -qE '^[0-9.]+$|^\['; then
+        return 0    # adresse IP : rien à résoudre
+    fi
+    for i in 1 2 3 4 5 6; do
+        if getent hosts "$name" > /dev/null; then
+            return 0
+        fi
+        echo "Résolution DNS de ${name} impossible, nouvel essai dans 5 s (${i}/6)..."
+        sleep 5
+    done
+    servers="$(awk '/^nameserver/ {printf "%s ", $2}' /etc/resolv.conf 2>/dev/null || true)"
+    echo "!!! Résolution DNS impossible : le serveur ne trouve pas l'adresse de ${name}."
+    echo "!!! Serveurs DNS configurés (/etc/resolv.conf) : ${servers:-aucun}"
+    echo "!!! Vérifier les serveurs DNS de la carte réseau (/etc/network/interfaces ou DHCP)"
+    echo "!!! et que le port 53 (udp et tcp) est ouvert vers eux, puis relancer ce script."
+    RETRY_FAILED="résolution DNS de ${name} (serveurs : ${servers:-aucun})"
+    return 1
+}
+echo "--- Résolution DNS"
+check_dns
+
 # ------------------------------------------------------------------ Paquets et Docker
 if [ -f /etc/apt/sources.list ]; then
     sed -i '/^deb cdrom/d' /etc/apt/sources.list
