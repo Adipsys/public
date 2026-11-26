@@ -6,7 +6,7 @@
 
 Ce guide installe un serveur Adipsys UP en une trentaine de minutes, dans le cas le plus courant : **un seul serveur**, installé **avec l'ISO Adipsys**, avec un **accès direct à Internet**.
 
-Le lien de téléchargement de l'ISO vous sera fourni par email, si vous n'en disposez pas, merci de contacter le support.
+Le lien de téléchargement de l'ISO vous sera fourni par email, si vous n'en disposez pas, merci de contacter le support ou les ventes.
 
 Dans les autres cas (Debian déjà installée, proxy d'entreprise), suivez le [guide d'installation complet](guide-installation.md).
 
