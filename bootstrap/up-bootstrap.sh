@@ -177,6 +177,31 @@ if [ -f /etc/apt/sources.list ]; then
     sed -i '/^deb cdrom/d' /etc/apt/sources.list
 fi
 
+# Sources apt : l'installateur Debian n'ajoute pas de miroir réseau s'il n'en joint aucun pendant
+# l'installation (sources limitées au CD). Sans miroir : ni Docker (iptables...), ni mises à jour de sécurité.
+apt_network_sources()
+{
+    cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources 2>/dev/null \
+        | grep -E '^[[:space:]]*(deb[[:space:]]|URIs:)' | grep -E 'https?://' \
+        | grep -v 'download\.docker\.com' || true
+}
+if [ "${ID:-}" = "debian" ] && [ -z "$(apt_network_sources)" ]; then
+    echo "--- Sources apt : aucun miroir Debian réseau, ajout de deb.debian.org"
+    cat > /etc/apt/sources.list.d/debian.sources << EOF
+Types: deb
+URIs: http://deb.debian.org/debian
+Suites: ${VERSION_CODENAME} ${VERSION_CODENAME}-updates
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: http://security.debian.org/debian-security
+Suites: ${VERSION_CODENAME}-security
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+EOF
+fi
+
 echo "--- Paquets de base"
 retry apt-get update
 # shellcheck disable=SC2086
