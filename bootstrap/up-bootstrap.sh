@@ -188,7 +188,12 @@ retry apt-get install -y $PACKAGES
 NTP_CLIENTS="$(dpkg-query -W -f '${Status}\n' systemd-timesyncd chrony ntpsec ntp openntpd 2>/dev/null || true)"
 if ! printf '%s\n' "$NTP_CLIENTS" | grep -q '^install ok installed'; then
     echo "--- Client NTP (systemd-timesyncd)"
-    retry apt-get install -y systemd-timesyncd
+    # Non bloquant : sans miroir Debian réseau (sources apt limitées au CD), le paquet est introuvable.
+    if ! apt-get install -y systemd-timesyncd; then
+        echo "AVERTISSEMENT : systemd-timesyncd non installé (aucune source apt ne le fournit)."
+        echo "  L'heure du serveur ne sera pas synchronisée : vérifier /etc/apt/sources.list, puis"
+        echo "  « apt-get install systemd-timesyncd » ou installer un autre client NTP."
+    fi
 fi
 if command -v timedatectl > /dev/null && [ -d /run/systemd/system ]; then
     timedatectl set-ntp true 2>/dev/null || true
