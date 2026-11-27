@@ -1,0 +1,15 @@
+title: Adipsys UP
+description: Documentation d'installation et d'exploitation des serveurs Adipsys UP
+lang: fr
+theme: jekyll-theme-cayman
+markdown: kramdown
+kramdown:
+  input: GFM
+  hard_wrap: false
+plugins:
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-titles-from-headings
+relative_links:
+  enabled: true
+  collections: false
