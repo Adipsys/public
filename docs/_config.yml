@@ -13,3 +13,5 @@ plugins:
 relative_links:
   enabled: true
   collections: false
+exclude:
+  - haute-disponibilite.md
