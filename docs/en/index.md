@@ -1,3 +1,7 @@
+---
+title: Adipsys UP — Documentation
+---
+
 # Adipsys UP — Documentation
 
 *[Version française](../index.md)*
