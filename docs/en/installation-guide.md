@@ -1,3 +1,10 @@
+---
+title: Installation guide
+parent: English
+nav_order: 2
+lang: en
+---
+
 # Adipsys UP — Installation and update guide
 
 *[Version française](../guide-installation.md)*

@@ -1,3 +1,8 @@
+---
+title: Démarrage rapide
+nav_order: 2
+---
+
 # Adipsys UP — Démarrage rapide
 
 *[English version](en/quick-start.md)*

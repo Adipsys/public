@@ -1,5 +1,9 @@
 ---
-title: Adipsys UP — Documentation
+title: English
+nav_order: 10
+has_children: true
+lang: en
+permalink: /en/
 ---
 
 # Adipsys UP — Documentation

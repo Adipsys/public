@@ -1,5 +1,7 @@
 ---
-title: Adipsys UP — Documentation
+title: Accueil
+nav_order: 1
+permalink: /
 ---
 
 # Adipsys UP — Documentation

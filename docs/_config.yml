@@ -1,17 +1,35 @@
 title: Adipsys UP
-description: Documentation d'installation des serveurs Adipsys UP (Universal Platform)
+description: Documentation d'installation et d'exploitation des serveurs Adipsys UP
 lang: fr
-theme: jekyll-theme-cayman
+remote_theme: just-the-docs/just-the-docs@v0.10.0
+color_scheme: dark
+
 markdown: kramdown
 kramdown:
   input: GFM
   hard_wrap: false
+
 plugins:
+  - jekyll-remote-theme
   - jekyll-relative-links
   - jekyll-optional-front-matter
   - jekyll-titles-from-headings
 relative_links:
   enabled: true
   collections: false
+
+# Just the Docs
+search_enabled: true
+heading_anchors: true
+mermaid:
+  version: "10.9.1"
+aux_links:
+  "GitHub":
+    - "https://github.com/Adipsys/public"
+aux_links_new_tab: true
+back_to_top: true
+back_to_top_text: "Haut de page"
+footer_content: "Adipsys UP — besoin d'aide : <a href=\"mailto:support@adipsys.com\">support@adipsys.com</a>"
+
 exclude:
   - haute-disponibilite.md

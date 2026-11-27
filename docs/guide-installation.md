@@ -1,3 +1,8 @@
+---
+title: Guide d'installation
+nav_order: 3
+---
+
 # Adipsys UP — Guide d'installation et de mise à jour
 
 *[English version](en/installation-guide.md)*

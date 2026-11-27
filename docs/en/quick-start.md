@@ -1,3 +1,10 @@
+---
+title: Quick start
+parent: English
+nav_order: 1
+lang: en
+---
+
 # Adipsys UP — Quick start
 
 *[Version française](../demarrage-rapide.md)*
